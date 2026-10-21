@@ -1,0 +1,8 @@
+{
+  "name": "flow",
+  "version": "0.1.0",
+  "description": "Fluxo spec → builder → review → PR com subagentes especializados",
+  "author": { "name": "Arthur Toledo" },
+  "license": "MIT",
+  "keywords": ["workflow", "spec", "review", "pull-request", "tdd"]
+}

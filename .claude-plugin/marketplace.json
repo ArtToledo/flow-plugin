@@ -1,0 +1,14 @@
+{
+  "name": "flow-marketplace",
+  "description": "Marketplace do plugin flow: spec → builder → review → PR",
+  "owner": {
+    "name": "Arthur Toledo"
+  },
+  "plugins": [
+    {
+      "name": "flow",
+      "source": "./",
+      "description": "Fluxo spec → builder → review → PR com subagentes especializados"
+    }
+  ]
+}
