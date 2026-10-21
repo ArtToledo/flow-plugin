@@ -1,29 +1,29 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildReviewPayload, commentableLines, consolidate, extractJson, validateReview } from '../lib/review.mjs';
+import { buildReviewPayload, commentableLines, consolidate, extractJson, reviewerSummary, validateReview } from '../lib/review.mjs';
 
 const finding = over => ({
   id: 'X-001', severity: 'major', category: 'A01 Broken Access Control', file: 'src/a.ts', line: 10,
-  evidence: 'GET /orders/:id não verifica dono do pedido', fix: 'Filtrar por userId', ...over,
+  evidence: 'GET /orders/:id does not check the order owner', fix: 'Filter by the token userId', ...over,
 });
 
-test('extrai JSON de bloco cercado', () => {
-  const text = 'Segue:\n```json\n{"reviewer":"code","round":1,"summary":"ok","findings":[]}\n```\n';
+test('extracts JSON from a fenced block', () => {
+  const text = 'Here:\n```json\n{"reviewer":"code","round":1,"summary":"ok","findings":[]}\n```\n';
   assert.equal(extractJson(text).reviewer, 'code');
 });
 
-test('valida campos obrigatórios e severidade', () => {
+test('validates required fields and severity', () => {
   assert.deepEqual(validateReview({ reviewer: 'code', round: 1, summary: 's', findings: [finding()] }), []);
   const errors = validateReview({ reviewer: 'x', round: 0, summary: '', findings: [finding({ severity: 'high', line: 0 })] });
   assert.equal(errors.length, 5);
 });
 
-test('consolida duplicados mantendo a maior severidade', () => {
+test('merges duplicates keeping the highest severity', () => {
   const result = consolidate([
     { reviewer: 'security', round: 1, summary: 's', findings: [finding({ id: 'SEC-001', severity: 'blocker' })] },
     { reviewer: 'code', round: 1, summary: 'c', findings: [
-      finding({ id: 'CODE-001', line: 11, category: 'Autorização' }),
-      finding({ id: 'CODE-002', file: 'src/b.ts', severity: 'nit', category: 'Nome', evidence: 'nome ruim' }),
+      finding({ id: 'CODE-001', line: 11, category: 'Authorization' }),
+      finding({ id: 'CODE-002', file: 'src/b.ts', severity: 'nit', category: 'Naming', evidence: 'bad name' }),
     ] },
   ]);
   assert.equal(result.findings.length, 2);
@@ -45,22 +45,34 @@ const diff = [
   '@@ -1,2 +0,0 @@',
 ].join('\n');
 
-test('linhas comentáveis vêm dos hunks do lado novo', () => {
+test('commentable lines come from the new-side hunks', () => {
   const lines = commentableLines(diff);
   assert.deepEqual([...lines.get('src/a.ts')], [8, 9, 10, 11, 12]);
   assert.ok(!lines.has('old.ts'));
 });
 
-test('payload: inline no diff, resto e nits no corpo, evento COMMENT', () => {
-  const consolidated = consolidate([{ reviewer: 'code', round: 2, summary: 's', findings: [
-    finding({ id: 'A', line: 10 }),
-    finding({ id: 'B', line: 99, category: 'Outro', evidence: 'fora do diff' }),
-    finding({ id: 'C', file: 'src/c.ts', severity: 'nit', category: 'Estilo', evidence: 'vírgula' }),
-  ] }]);
-  const payload = buildReviewPayload(consolidated, diff, 'abc123');
+const roundTwo = () => consolidate([{ reviewer: 'code', round: 2, summary: 's', findings: [
+  finding({ id: 'A', line: 10 }),
+  finding({ id: 'B', line: 99, category: 'Other', evidence: 'outside the diff' }),
+  finding({ id: 'C', file: 'src/c.ts', severity: 'nit', category: 'Style', evidence: 'comma' }),
+] }]);
+
+test('payload: inline on diff lines, the rest and nits in the body, COMMENT event', () => {
+  const payload = buildReviewPayload(roundTwo(), diff, { commitId: 'abc123' });
   assert.equal(payload.event, 'COMMENT');
   assert.equal(payload.commit_id, 'abc123');
   assert.deepEqual(payload.comments.map(c => c.line), [10]);
-  assert.match(payload.body, /fora do diff/);
+  assert.match(payload.body, /Automated review — round 2/);
+  assert.match(payload.body, /outside the diff/);
   assert.match(payload.body, /Nits \(1\)/);
+  assert.match(payload.comments[0].body, /Suggested fix/);
+});
+
+test('payload and summary follow the chosen language', () => {
+  const payload = buildReviewPayload(roundTwo(), diff, { lang: 'pt-BR' });
+  assert.match(payload.body, /Review automatizada — rodada 2/);
+  assert.match(payload.comments[0].body, /Correção sugerida/);
+  assert.match(reviewerSummary(roundTwo(), 'code', { lang: 'pt-BR' }), /### Revisor: code/);
+  assert.match(reviewerSummary(roundTwo(), 'code'), /### Reviewer: code/);
+  assert.throws(() => buildReviewPayload(roundTwo(), diff, { lang: 'fr' }), /Unsupported language/);
 });

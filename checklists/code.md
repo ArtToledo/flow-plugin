@@ -1,57 +1,57 @@
-# Checklist de código
+# Code checklist
 
-A base é clean code, arquitetura hexagonal e TDD. Em `checklistRef`, cite como `code.md#<ID>` (ex.: `code.md#CODE-02`).
+Based on clean code, hexagonal architecture and TDD. Cite items in `checklistRef` as `code.md#<ID>` (e.g. `code.md#CODE-02`).
 
-## CODE-01 — Critérios de aceite
+## CODE-01 — Acceptance criteria
 
-- Todos os critérios de aceite da fatia estão implementados.
-- Nada fora do escopo da fatia sem justificativa.
+- Every acceptance criterion of the slice is implemented.
+- Nothing outside the slice scope without a justification.
 
-## CODE-02 — Testes
+## CODE-02 — Tests
 
-- Cada critério tem teste que **falharia sem a mudança**.
-- Caminho feliz, erros e bordas cobertos (vazio, nulo, limite, concorrência quando aplicável).
-- Testes determinísticos: sem depender de ordem, relógio real, rede externa ou dados compartilhados.
-- Mocks só nas fronteiras (portas), sem mockar o que está sendo testado.
+- Every criterion has a test that **would fail without the change**.
+- The tests cover the happy path, errors and edge cases: empty, null, limits, and concurrency where it applies.
+- The tests are deterministic: they don't depend on order, the real clock, the external network or shared data.
+- Mocks are used only at the boundaries (ports), never on the code under test.
 
-## CODE-03 — Arquitetura
+## CODE-03 — Architecture
 
-- Domínio não importa infraestrutura (ORM, HTTP, SDKs).
-- Portas e adaptadores respeitados quando o projeto usa. Regra de negócio fora de controllers e handlers.
-- Dependências apontam para dentro, e o padrão novo é consistente com o resto do projeto.
+- The domain doesn't import infrastructure (ORM, HTTP, SDKs).
+- Ports and adapters are respected when the project uses them, and business rules stay out of controllers and handlers.
+- Dependencies point inward, and new code follows the patterns the project already uses.
 
-## CODE-04 — Legibilidade
+## CODE-04 — Readability
 
-- Nomes claros e do domínio, funções curtas com uma responsabilidade.
-- Sem duplicação, sem código morto e sem comentário que repete o código.
-- TypeScript sem `any` (nem `as any`) e sem `!` desnecessário. Nulos tratados com checagem estrita.
+- Clear domain names and short, single-purpose functions.
+- No duplication, no dead code, and no comments that just repeat the code.
+- TypeScript without `any` (or `as any`) and without unnecessary `!`. Nulls are handled under strict checks.
 
-## CODE-05 — Erros
+## CODE-05 — Errors
 
-- Erros tipados (classes ou resultados de domínio) e tratados no nível certo.
-- Nunca engolidos (`catch {}` vazio) nem relançados sem contexto.
-- Mensagens úteis para quem opera, sem vazar dados internos ao cliente.
+- Errors are typed (domain classes or results) and handled at the right level.
+- They are never swallowed (empty `catch {}`) or rethrown without context.
+- Messages help whoever operates the system, without leaking internals to the client.
 
-## CODE-06 — Concorrência e consistência
+## CODE-06 — Concurrency and consistency
 
-- Transações delimitadas corretamente, sem chamada externa dentro de transação longa.
-- Consumidores Kafka, SQS e RabbitMQ idempotentes (entrega pelo menos uma vez), com retries e DLQ.
-- Condições de corrida em contadores, saldos e estoque tratadas (lock, versão ou operação atômica).
+- Transactions are scoped correctly, with no external calls inside a long transaction.
+- Kafka, SQS and RabbitMQ consumers are idempotent (at-least-once delivery), with retries and a DLQ.
+- Race conditions on counters, balances and stock are handled with a lock, a version or an atomic operation.
 
-## CODE-07 — Performance de backend
+## CODE-07 — Backend performance
 
-- Sem N+1. Carregamento em lote ou join.
-- Índice para cada query nova em tabela grande.
-- Paginação em listagens.
-- Cache (Redis) com chave, TTL e invalidação definidos.
+- No N+1 queries: load in batches or with a join.
+- Every new query on a large table has an index.
+- Listings are paginated.
+- Caches (Redis) have a defined key, TTL and invalidation.
 
-## CODE-08 — Contratos
+## CODE-08 — Contracts
 
-- Sem quebra de API pública sem versionamento.
-- DTOs validados na borda.
-- Migrations reversíveis e seguras para deploy sem downtime (expand/contract).
+- No public API break without versioning.
+- DTOs are validated at the edge.
+- Migrations are reversible and safe for zero-downtime deploys (expand/contract).
 
-## CODE-09 — Observabilidade
+## CODE-09 — Observability
 
-- Logs estruturados nos pontos novos, com correlação (request id).
-- Métricas ou eventos para fluxos de negócio novos.
+- Structured logs at the new points, with correlation (a request id).
+- Metrics or events for new business flows.

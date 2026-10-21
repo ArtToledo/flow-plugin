@@ -1,8 +1,10 @@
-# Rodada de navegador
+# Browser round
 
-Ela roda quando `route.json` traz `"browser": true`, o que exige `flow.json.browser` configurado e uma fatia que toque frontend web. O `browser-tester` usa o Playwright MCP declarado no `.mcp.json` do plugin, sem configuração extra por projeto.
+This round runs when `route.json` has `"browser": true`. That requires `flow.json.browser` to be configured and a slice that touches the web frontend.
 
-## Configuração (`flow.json.browser`)
+The `browser-tester` uses the Playwright MCP server declared in the plugin's `.mcp.json`. Projects don't need any extra setup.
+
+## Configuration (`flow.json.browser`)
 
 ```json
 {
@@ -16,27 +18,32 @@ Ela roda quando `route.json` traz `"browser": true`, o que exige `flow.json.brow
 }
 ```
 
-`seedCommand`, `testUser` e `prod` são opcionais. Sem `prod`, a medição de Core Web Vitals com Lighthouse é pulada, e o resumo deixa isso explícito.
+`seedCommand`, `testUser` and `prod` are optional. Without `prod`, the Lighthouse Core Web Vitals measurement is skipped, and the summary says so.
 
-## Sequência (feita pela skill, na sessão principal)
+## Sequence (run by the skill, in the main session)
 
-1. **Credenciais**: se houver `testUser.fromEnv`, confira se as variáveis existem. Use `test -n "$E2E_USER"` e nunca imprima o valor. Se faltar alguma, pule o login, avise e siga com as telas públicas. Não use contas reais.
-2. **Seed**: rode `seedCommand`, se existir. Se falhar, pare a rodada de navegador, mas continue com os revisores, e registre a falha como achado `major` do `browser`, com `file: "flow.json"` e `line: null`.
-3. **Subir o servidor**:
+1. **Credentials**: if `testUser.fromEnv` is set, check that the variables exist with `test -n "$E2E_USER"`. Never print their values. If any is missing, skip login, warn the user, and test only the public screens. Never use real accounts.
+2. **Seed**: run `seedCommand` if there is one. If it fails, skip the browser round but keep the reviewers. Record the failure as a `major` `browser` finding with `file: "flow.json"` and `line: null`.
+3. **Start the server**:
    ```bash
    node "<plugin>/scripts/devserver.mjs" start --name dev --cmd "<devCommand>" --url "<url>" --ready "<readyPath>" --dir .claude/flow-runs/<slug>/server
    ```
-   Se não subir, trate como o seed.
-4. **Lighthouse (só com `prod`)**: rode `buildCommand` e depois `devserver.mjs start --name prod --cmd "<startCommand>" --url "<prod.url>"`. Se a porta for a mesma do dev, derrube o dev antes e suba de novo depois.
-5. **Chamar o `browser-tester`** na mesma mensagem dos revisores, em paralelo com eles, usando o prompt descrito em `SKILL.md`.
-6. **Derrubar**: `devserver.mjs stop --name dev` (e `--name prod`), **sempre**, inclusive quando houver erro. Confira que nenhum processo ficou na porta.
-7. Os screenshots que o agente salvou ficam em `slice-NN/round-N/screens/`. O resumo vai para o comentário do revisor `browser` no PR, e os arquivos não são commitados.
+   If it doesn't come up, handle it like a failed seed.
+4. **Lighthouse (only with `prod`)**: run `buildCommand`, then `devserver.mjs start --name prod --cmd "<startCommand>" --url "<prod.url>"`. If it uses the same port as dev, stop dev first and start it again afterwards.
+5. **Call the `browser-tester`** in the same message as the reviewers, in parallel, with the prompt described in `SKILL.md`.
+6. **Stop**: run `devserver.mjs stop --name dev` (and `--name prod`) **always**, including when there was an error. Check that nothing is left on the port.
+7. The screenshots saved by the agent go in `slice-NN/round-N/screens/`. The summary goes into the `browser` reviewer's PR comment. The files are not committed.
 
-## Regras de severidade do browser-tester
+## browser-tester severity rules
 
-- Critério de aceite que falha na tela é sempre `blocker`.
-- Erro no console, ou requisição 4xx/5xx inesperada, é `major`.
-- Violação de axe-core `serious`/`critical` é `major`; `moderate` é `minor`; `minor` é `nit`.
-- Rolagem horizontal em 320 px, ou elemento sobreposto ou cortado, é `major`.
-- Fluxo novo que não funciona só pelo teclado é `major`.
-- Core Web Vitals acima do limite (LCP > 2,5 s, INP/TBT alto, CLS > 0,1) é `major`; perto do limite é `minor`.
+| Situation | Severity |
+| --------- | -------- |
+| An acceptance criterion fails on screen | `blocker` (always) |
+| Console error or unexpected 4xx/5xx request | `major` |
+| axe-core violation: `serious` or `critical` | `major` |
+| axe-core violation: `moderate` | `minor` |
+| axe-core violation: `minor` | `nit` |
+| Horizontal scroll at 320 px, or an overlapping or clipped element | `major` |
+| A new flow that can't be completed by keyboard alone | `major` |
+| Core Web Vitals over the limit (LCP > 2.5 s, high INP/TBT, CLS > 0.1) | `major` |
+| Core Web Vitals close to the limit | `minor` |

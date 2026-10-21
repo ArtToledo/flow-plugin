@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { matchesAny } from '../lib/glob.mjs';
 import { route } from '../lib/route.mjs';
 
-test('globs com ** e *', () => {
+test('globs with ** and *', () => {
   assert.ok(matchesAny('src/app/page.tsx', ['src/**/*.tsx']));
   assert.ok(matchesAny('src/page.tsx', ['src/**/*.tsx']));
   assert.ok(!matchesAny('lib/page.tsx', ['src/**/*.tsx']));
@@ -11,17 +11,17 @@ test('globs com ** e *', () => {
   assert.ok(matchesAny('styles/x.scss', ['**/*.{css,scss}']));
 });
 
-test('padrão sem barra casa em qualquer profundidade', () => {
+test('a pattern without a slash matches at any depth', () => {
   assert.ok(matchesAny('Dockerfile', ['Dockerfile']));
   assert.ok(matchesAny('apps/api/package.json', ['package.json']));
   assert.ok(!matchesAny('package.json.bak', ['package.json']));
 });
 
-test('caminho com barra invertida', () => {
+test('backslash paths', () => {
   assert.ok(matchesAny(['src', 'app', 'x.tsx'].join('\\'), ['src/**/*.tsx']));
 });
 
-test('roteamento: code sempre, demais por glob, browser só com config', () => {
+test('routing: code always, others by glob, browser only with config', () => {
   const config = {
     routing: { ui: ['src/**/*.tsx'], ux: ['src/app/**'], security: ['**/auth/**'] },
     browser: { devCommand: 'npm run dev', url: 'http://localhost:3000' },

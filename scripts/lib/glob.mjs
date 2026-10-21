@@ -1,5 +1,5 @@
-// Glob mínimo, sem dependências. Semântica parecida com .gitignore:
-// padrão sem "/" casa com o nome do arquivo em qualquer profundidade.
+// Minimal dependency-free glob with .gitignore-like semantics:
+// a pattern without "/" matches the file name at any depth.
 export function globToRegExp(glob) {
   const anywhere = !glob.includes('/');
   let re = '';
@@ -26,7 +26,7 @@ export function globToRegExp(glob) {
   return new RegExp(anywhere ? `^(?:.*/)?${re}$` : `^${re}$`);
 }
 
-// "**/*.{css,scss}" vira ["**/*.css", "**/*.scss"].
+// "**/*.{css,scss}" becomes ["**/*.css", "**/*.scss"].
 export function expandBraces(glob) {
   const match = glob.match(/\{([^{}]*)\}/);
   if (!match) return [glob];

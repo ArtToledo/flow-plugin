@@ -1,48 +1,48 @@
-# Checklist de UX
+# UX checklist
 
-A base são as 10 heurísticas de Nielsen e o comportamento exigido pela WCAG 2.2 AA. Em `checklistRef`, cite como `ux.md#<ID>` (ex.: `ux.md#UX-05`).
+Based on Nielsen's 10 heuristics and the behavior required by WCAG 2.2 AA. Cite items in `checklistRef` as `ux.md#<ID>` (e.g. `ux.md#UX-05`).
 
-## UX-01 — Status visível
+## UX-01 — Visible status
 
-- Toda tela ou componente novo com dados tem estados de carregamento, sucesso, erro e vazio.
-- Ações demoradas dão feedback imediato (botão desabilitado com indicador, progresso).
+- Every new screen or component that shows data has loading, success, error and empty states.
+- Slow actions give immediate feedback: a disabled button with an indicator, or progress.
 
-## UX-02 — Prevenção e recuperação de erro
+## UX-02 — Error prevention and recovery
 
-- Ação destrutiva pede confirmação ou permite desfazer.
-- Validação inline, no momento certo (ao sair do campo ou ao enviar, não a cada tecla).
-- A mensagem de erro diz o que aconteceu e **como resolver**, perto do campo (3.3.1, 3.3.3).
+- Destructive actions ask for confirmation or allow undo.
+- Validation is inline and well timed: on blur or on submit, not on every keystroke.
+- Error messages say what happened and **how to fix it**, next to the field (3.3.1, 3.3.3).
 
-## UX-03 — Controle do usuário
+## UX-03 — User control
 
-- Voltar, cancelar e desfazer disponíveis. Modais fecham com Esc e com botão.
-- Nada de ação irreversível disparada sem intenção clara.
+- Back, cancel and undo are available, and modals close with Esc and with a button.
+- No irreversible action without clear intent.
 
-## UX-04 — Consistência
+## UX-04 — Consistency
 
-- Mesmos padrões de componente, texto e fluxo já usados no produto.
-- Mesma ação com o mesmo nome em todo lugar.
+- New UI uses the component, copy and flow patterns already in the product.
+- The same action has the same name everywhere.
 
-## UX-05 — Teclado e foco
+## UX-05 — Keyboard and focus
 
-- Tudo operável por teclado (2.1.1), sem armadilha de foco (2.1.2).
-- Ordem de foco lógica (2.4.3).
-- Foco visível (2.4.7) e não encoberto por header fixo ou toast (2.4.11).
-- Foco movido corretamente ao abrir ou fechar modais e após navegação.
+- Everything works by keyboard (2.1.1), with no focus traps (2.1.2).
+- Focus order is logical (2.4.3).
+- Focus is visible (2.4.7) and not hidden by a sticky header or a toast (2.4.11).
+- Focus moves correctly when a modal opens or closes, and after navigation.
 
-## UX-06 — Alvos e gestos
+## UX-06 — Targets and gestures
 
-- Alvos de toque com pelo menos 24x24 px CSS ou espaçamento equivalente (2.5.8).
-- Arrastar sempre com alternativa de clique ou toque simples (2.5.7).
+- Touch targets are at least 24×24 CSS px, or have equivalent spacing (2.5.8).
+- Dragging always has a click or single-tap alternative (2.5.7).
 
-## UX-07 — Formulários
+## UX-07 — Forms
 
-- Rótulos reais (`<label>` associado ou `aria-labelledby`), não só placeholder (3.3.2).
-- Sem pedir de novo o que já foi informado no mesmo processo (3.3.7).
-- Login sem teste cognitivo, permitindo colar e usar gerenciador de senha (3.3.8).
-- `autocomplete` adequado nos campos de dados pessoais (1.3.5).
+- Fields have real labels (an associated `<label>` or `aria-labelledby`), not just placeholders (3.3.2).
+- The same process never asks again for information already given (3.3.7).
+- Login has no cognitive test, and allows pasting and password managers (3.3.8).
+- Personal data fields use the right `autocomplete` (1.3.5).
 
-## UX-08 — Linguagem
+## UX-08 — Copy
 
-- Textos em português claro, sem jargão técnico para o usuário final.
-- Botões com verbos que dizem o que acontece ("Salvar pedido", não "OK").
+- Text is clear and free of technical jargon for end users, in the product's language.
+- Buttons use verbs that say what will happen ("Save order", not "OK").

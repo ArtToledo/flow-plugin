@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Levanta os fatos do projeto para o /flow-init: branches, comandos de qualidade,
-// stack, pastas relevantes e servidor de dev. Só lê; imprime JSON.
-// Uso: node detect.mjs [--dir .]
+// Gathers project facts for /flow-init: branches, quality commands, stack,
+// relevant folders and dev server. Read-only; prints JSON.
+// Usage: node detect.mjs [--dir .]
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';

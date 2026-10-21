@@ -1,80 +1,97 @@
 ---
 name: flow-init
-description: Mapeia o projeto (branches, comandos de qualidade, stack, pastas de frontend/backend/infra, servidor de dev) e gera .claude/flow.json para o /flow:ship. Roda uma vez por projeto, ou de novo para reconfigurar.
+description: Maps the project (language, branches, quality commands, stack, frontend/backend/infra folders, dev server) and writes .claude/flow.json for /flow:ship. Run once per project, or again to reconfigure.
 disable-model-invocation: true
 ---
 
 # /flow-init
 
-Gere o `.claude/flow.json` do projeto atual, confirmando com o usuário o que não dá para detectar com segurança.
+Write the current project's `.claude/flow.json`, and confirm with the user whatever cannot be detected reliably.
 
-## 1. Detectar
+## 1. Language
+
+Before anything else, make one `AskUserQuestion` call with a single question, written in both languages:
+
+- Question: "Which language should flow use? / Em qual idioma o flow deve trabalhar?"
+- Header: "Language"
+- Options:
+  - "English" → `en`
+  - "Português (Brasil)" → `pt-BR`
+
+Put first, marked "(Recommended)", the language the user has been writing in. If there is no conversation yet, recommend English.
+
+From here on, write every message and question in the chosen language (`<lang>`). The value goes into `flow.json.language`. `/flow:ship` uses it for the spec, commits, PRs and review comments.
+
+If `flow.json` already exists and has `language`, recommend that value.
+
+## 2. Detect
 
 ```bash
 git rev-parse --show-toplevel
 node "${CLAUDE_PLUGIN_ROOT}/scripts/detect.mjs"
 ```
 
-O `detect.mjs` só lê e devolve JSON com:
-- `branches`: padrão, relevantes no remoto e só locais;
-- `node`: gerenciador, scripts, comandos sugeridos, frameworks, servidor de dev e seeds;
-- `make`: alvos do Makefile;
-- `other`: Python, Go e Rust;
-- `dirs`, `monorepoPackages`, `files`;
-- `existing`: se já há `flow.json`, `.gitignore` e checklists.
+`detect.mjs` is read-only. It returns JSON with:
+- `branches`: the default branch, the relevant remote branches and the local-only ones;
+- `node`: package manager, scripts, suggested commands, frameworks, dev server and seed scripts;
+- `make`: Makefile targets;
+- `other`: Python, Go and Rust;
+- `dirs`, `monorepoPackages` and `files`;
+- `existing`: whether `flow.json`, `.gitignore` and project checklists already exist.
 
-Se não for um repositório git, avise e pare. Se não houver remoto `origin`, avise que o `/ship` precisa de um para abrir PRs, mas siga.
+If this is not a git repository, say so and stop. If there is no `origin` remote, warn that `/ship` needs one to open PRs, but continue.
 
-Se `existing.flowJson` for verdadeiro, leia o atual e pergunte: **Reconfigurar do zero** ou **Manter e só revisar** (mostrar e permitir ajustes pontuais).
+If `existing.flowJson` is true, read the current file and ask: **Reconfigure from scratch** or **Keep it and review** (show it and allow targeted changes).
 
-Se precisar, leia `package.json`, `CLAUDE.md` e a estrutura de `src/` para completar o roteamento. Não leia o repositório inteiro.
+Read `package.json`, `CLAUDE.md` and the `src/` layout if you need them to fill in the routing. Do not read the whole repository.
 
-## 2. Montar a proposta
+## 3. Build the proposal
 
 **Branches**:
-- se existir `dev`, `develop` ou `development`, ela é a base de `feature`, `bugfix`, `refactor` e `chore`, e a branch padrão (`main`/`master`) é a base de `hotfix`;
-- se o projeto **só tem** a branch padrão, todas as naturezas apontam para ela e `hotfixBackMerge` é `null`.
+- If `dev`, `develop` or `development` exists, it is the base for `feature`, `bugfix`, `refactor` and `chore`, and the default branch (`main` or `master`) is the base for `hotfix`.
+- If the project **only has** the default branch, every type points to it, and `hotfixBackMerge` is `null`.
 
-**Prefixos**: `feat/`, `fix/`, `hotfix/`, `refactor/`, `chore/`.
+**Prefixes**: `feat/`, `fix/`, `hotfix/`, `refactor/`, `chore/`.
 
-**Comandos**:
-- use `node.commands`, `make.commands` ou `other.*.commands`, nessa preferência, conforme a stack principal;
-- inclua `e2e` só se houver Playwright configurado (`@playwright/test` ou `playwright.config.*`);
-- omita o que não existir. Nunca invente script.
+**Commands**:
+- Use `node.commands`, `make.commands` or `other.*.commands`, in that order of preference, depending on the main stack.
+- Include `e2e` only when Playwright is set up (`@playwright/test` or `playwright.config.*`).
+- Leave out anything that doesn't exist. Never invent a script.
 
-**Roteamento**: parta dos padrões de `${CLAUDE_PLUGIN_ROOT}/skills/ship/reference/reviewer-routing.md` e ajuste às pastas reais:
-- em monorepo (`apps/*`, `packages/*`), prefixe os globs de UI/UX com os pacotes de frontend detectados;
-- em projeto só backend, deixe `ui` e `ux` vazios;
-- em React Native ou Expo, mantenha `ui`/`ux` (revisão por código) e **não** configure `browser`, porque o Playwright cobre só web.
+**Routing**: start from the defaults in `${CLAUDE_PLUGIN_ROOT}/skills/ship/reference/reviewer-routing.md` and adapt them to the real folders.
+- **Monorepo** (`apps/*`, `packages/*`): prefix the UI/UX globs with the frontend packages you detected.
+- **Backend-only project**: leave `ui` and `ux` empty.
+- **React Native or Expo**: keep `ui` and `ux` (they review by reading code), but do **not** configure `browser`, because Playwright only covers the web.
 
-**Browser**: só para frontend web com `node.dev` detectado. Use `devCommand` e `url` da detecção, `readyPath` `/` (a menos que exista rota de health conhecida) e `viewports` `[320, 768, 1280]`.
+**Browser**: only for a web frontend with a detected `node.dev`. Use the detected `devCommand` and `url`, `readyPath` `/` (unless there is a known health route) and `viewports` `[320, 768, 1280]`.
 
-**Limites**: `maxReviewRounds: 2`, `maxGateAttempts: 3`.
+**Limits**: `maxReviewRounds: 2` and `maxGateAttempts: 3`.
 
-## 3. Confirmar com o usuário
+## 4. Confirm with the user
 
-Use `AskUserQuestion`, no máximo 4 perguntas por chamada, sempre com a sugestão como primeira opção marcada "(Recommended)":
+Use `AskUserQuestion` in `<lang>`, with at most 4 questions per call, and put the suggestion first, marked "(Recommended)".
 
-Chamada 1:
-1. **Base de desenvolvimento** (feature, bugfix, refactor e chore): as branches relevantes detectadas.
-2. **Base de hotfix**: a branch padrão e as outras relevantes.
-3. **Back-merge de hotfix**: "Sim, para `<base de dev>`" ou "Não". Só pergunte se as duas bases forem diferentes.
-4. **Prefixos de branch**: "Padrão (feat/, fix/, hotfix/, refactor/, chore/)" ou "Personalizar" (o usuário descreve em "Other").
+**Call 1:**
+1. **Development base** (feature, bugfix, refactor, chore): the relevant branches you detected.
+2. **Hotfix base**: the default branch and the other relevant branches.
+3. **Hotfix back-merge**: "Yes, into `<development base>`" or "No". Only ask when the two bases differ.
+4. **Branch prefixes**: "Default (feat/, fix/, hotfix/, refactor/, chore/)" or "Customize" (described under "Other").
 
-Chamada 2 (só se houver frontend web):
-1. **Teste no navegador**: "Ativar com `<devCommand>` em `<url>`", "Ativar com outro comando ou porta" (em "Other") ou "Desativar".
-2. **Dados de teste**: os `seedCandidates` detectados, "Sem seed" ou "Outro comando" (em "Other").
-3. **Usuário de teste**: "Variáveis E2E_USER e E2E_PASSWORD", "Criado pelo seed (sem login separado)" ou "Sem login".
-4. **Lighthouse**: "Medir no build de produção (`<build>` + `<start>`)" ou "Não medir". Só pergunte se existirem `build` e `start`.
+**Call 2** (only when there is a web frontend):
+1. **Browser testing**: "Enable with `<devCommand>` on `<url>`", "Enable with another command/port" (under "Other") or "Disable".
+2. **Test data**: the detected `seedCandidates`, "No seed" or "Another command" (under "Other").
+3. **Test user**: "E2E_USER and E2E_PASSWORD variables", "Created by the seed (no separate login)" or "No login".
+4. **Lighthouse**: "Measure on the production build (`<build>` + `<start>`)" or "Don't measure". Only ask when both `build` and `start` exist.
 
-Por fim, mostre os **comandos de qualidade** e o **roteamento** propostos em blocos de código e pergunte: **Confirmar** ou **Ajustar** (descrição em "Other"). Aplique o ajuste e mostre de novo, até confirmar.
+Finally, show the proposed **quality commands** and **routing** in code blocks and ask **Confirm** or **Adjust** (described under "Other"). Apply each adjustment and show the result again until the user confirms.
 
-## 4. Gravar
+## 5. Write
 
-1. Crie `.claude/` se não existir e grave `.claude/flow.json`, com 2 espaços de indentação, neste formato:
+1. Create `.claude/` if needed and write `.claude/flow.json` with 2-space indentation, in this shape:
 
 ```json
 {
+  "language": "en",
   "branches": { "feature": "dev", "bugfix": "dev", "refactor": "dev", "chore": "dev", "hotfix": "main" },
   "hotfixBackMerge": "dev",
   "branchPrefix": { "feature": "feat/", "bugfix": "fix/", "hotfix": "hotfix/", "refactor": "refactor/", "chore": "chore/" },
@@ -93,8 +110,10 @@ Por fim, mostre os **comandos de qualidade** e o **roteamento** propostos em blo
 }
 ```
 
-   Omita `browser` quando ele for desativado. Omita `seedCommand`, `testUser` e `prod` quando não se aplicarem.
+   Leave out `browser` when it is disabled, and leave out `seedCommand`, `testUser` and `prod` when they don't apply.
 
-2. Garanta que o `.gitignore` tenha a linha `.claude/flow-runs/`. Crie o arquivo se não existir e não duplique a linha.
-3. Valide o JSON gravado com `node -e "JSON.parse(require('fs').readFileSync('.claude/flow.json','utf8'))"`.
-4. **Não commite.** Mostre o resumo final e sugira commitar `.claude/flow.json` e `.gitignore`. Mencione que checklists específicos do projeto podem ir em `.claude/checklists/<security|ux|ui|code>.md`: por padrão eles estendem os do plugin, e substituem se a primeira linha for `<!-- mode: replace -->`.
+2. Make sure `.gitignore` contains the line `.claude/flow-runs/`. Create the file if needed, and don't add the line twice.
+3. Validate the written JSON with `node -e "JSON.parse(require('fs').readFileSync('.claude/flow.json','utf8'))"`.
+4. **Don't commit.** Show the final summary and suggest committing `.claude/flow.json` and `.gitignore`.
+   - Mention that project-specific checklists can go in `.claude/checklists/<security|ux|ui|code>.md`. By default they extend the plugin's checklists; they replace them when the first line is `<!-- mode: replace -->`.
+   - Mention that the language can be changed later by editing `language` in `flow.json`.

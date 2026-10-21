@@ -1,24 +1,27 @@
-# Roteamento de revisores
+# Reviewer routing
 
-O roteamento é feito por `scripts/route.mjs`, que cruza `git diff --name-only <base-da-fatia>...HEAD` com `flow.json.routing`.
+Routing is done by `scripts/route.mjs`. It matches `git diff --name-only <slice-base>...HEAD` against `flow.json.routing`.
 
-| Revisor             | Quando roda                                                                 |
-| ------------------- | --------------------------------------------------------------------------- |
-| `code-reviewer`     | Sempre                                                                      |
-| `security-reviewer` | Algum arquivo casa com `routing.security`                                   |
-| `ux-reviewer`       | Algum arquivo casa com `routing.ux`                                         |
-| `ui-reviewer`       | Algum arquivo casa com `routing.ui`                                         |
-| `browser-tester`    | `flow.json.browser` existe e algum arquivo casa com `routing.browser` (ou, sem ele, com `ui` ou `ux`) |
+| Reviewer            | When it runs                                                                 |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `code-reviewer`     | Always                                                                       |
+| `security-reviewer` | When a file matches `routing.security`                                       |
+| `ux-reviewer`       | When a file matches `routing.ux`                                             |
+| `ui-reviewer`       | When a file matches `routing.ui`                                             |
+| `browser-tester`    | When `flow.json.browser` exists and a file matches `routing.browser` (or, without it, `ui` or `ux`) |
 
-## Sintaxe dos globs
+## Glob syntax
 
-- `*` casa qualquer coisa dentro de um segmento; `**` casa qualquer profundidade; `?` casa um caractere; `{a,b}` casa alternativas.
-- Padrão **sem** `/` casa com o nome do arquivo em qualquer pasta (`Dockerfile`, `package.json`, `*.tf`), como no `.gitignore`.
-- Padrão **com** `/` é ancorado na raiz do repositório (`src/**/*.tsx`).
+- `*` matches anything within one path segment.
+- `**` matches any depth.
+- `?` matches one character.
+- `{a,b}` matches either alternative.
+- A pattern **without** `/` matches the file name in any folder (`Dockerfile`, `package.json`, `*.tf`), as in `.gitignore`.
+- A pattern **with** `/` is anchored at the repository root (`src/**/*.tsx`).
 
-## Padrões sugeridos pelo /flow-init
+## Defaults suggested by /flow-init
 
-Ajuste conforme a estrutura detectada. Em monorepo, prefixe com `apps/web/` e assim por diante.
+Adapt them to the project layout. In a monorepo, prefix them with `apps/web/` and so on.
 
 ```json
 {
@@ -32,4 +35,4 @@ Ajuste conforme a estrutura detectada. Em monorepo, prefixe com `apps/web/` e as
 }
 ```
 
-Um arquivo pode acionar mais de um revisor. Arquivos que não casam com nada ficam só com o `code-reviewer`.
+A file can trigger more than one reviewer. Files that match nothing get only the `code-reviewer`.

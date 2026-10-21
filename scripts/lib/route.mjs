@@ -2,9 +2,9 @@ import { matchesAny } from './glob.mjs';
 
 const ROUTED = ['security', 'ux', 'ui'];
 
-// O code reviewer roda sempre; os outros dependem dos globs de flow.json.routing.
-// O browser-tester roda quando há config.browser e o diff toca routing.browser
-// (ou, na falta dele, os globs de ui e ux).
+// The code reviewer always runs; the others depend on the flow.json.routing globs.
+// The browser-tester runs when config.browser exists and the diff touches
+// routing.browser (or, without it, the ui and ux globs).
 export function route(files, config) {
   const routing = config.routing ?? {};
   const matched = {};

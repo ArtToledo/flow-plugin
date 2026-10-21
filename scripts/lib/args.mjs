@@ -1,4 +1,4 @@
-// Converte ["cmd", "--a", "1", "--flag"] em { _: ["cmd"], a: "1", flag: true }.
+// Turns ["cmd", "--a", "1", "--flag"] into { _: ["cmd"], a: "1", flag: true }.
 export function parseArgs(argv) {
   const out = { _: [] };
   for (let i = 0; i < argv.length; i++) {

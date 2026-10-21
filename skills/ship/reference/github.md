@@ -1,69 +1,75 @@
-# Comandos de GitHub e git
+# GitHub and git commands
 
-Todos via `gh`, já autenticado. `{owner}/{repo}` sai de `gh repo view --json nameWithOwner -q .nameWithOwner`.
+Everything goes through `gh`, which is already authenticated. Get `{owner}/{repo}` from `gh repo view --json nameWithOwner -q .nameWithOwner`.
 
-## Push e PR de fatia
+## Push and slice PR
 
 ```bash
 git push -u origin <branch>
-gh pr create --base <integração ou base> --head <branch> --title "<título>" --body-file <arquivo> [--draft]
+gh pr create --base <integration or base> --head <branch> --title "<title>" --body-file <file> [--draft]
 gh pr view <branch> --json number,url,isDraft
 ```
 
-Escreva o corpo num arquivo dentro da pasta da fatia e use `--body-file`; nunca passe Markdown longo inline.
+Write the body to a file inside the slice folder and pass it with `--body-file`. Never pass long Markdown inline.
 
-## Comentários
+## Comments
 
-1. **Um comentário-resumo por revisor que rodou:**
+1. **One summary comment per reviewer that ran:**
    ```bash
-   node "<plugin>/scripts/review.mjs" summary <round>/consolidated.json --reviewer security > <round>/summary-security.md
+   node "<plugin>/scripts/review.mjs" summary <round>/consolidated.json --reviewer security --lang <lang> > <round>/summary-security.md
    gh pr comment <n> --body-file <round>/summary-security.md
    ```
-2. **Achados com linha como review inline (evento sempre `COMMENT`):**
+2. **Findings with a line, posted as an inline review (always the `COMMENT` event):**
    ```bash
-   git fetch origin <branch-alvo-do-PR>
-   git diff origin/<branch-alvo-do-PR>...HEAD > <slice>/pr.diff
-   node "<plugin>/scripts/review.mjs" payload <última rodada>/consolidated.json --diff <slice>/pr.diff --commit $(git rev-parse HEAD) --out <slice>/pr-review.json
+   git fetch origin <pr-target-branch>
+   git diff origin/<pr-target-branch>...HEAD > <slice>/pr.diff
+   node "<plugin>/scripts/review.mjs" payload <last round>/consolidated.json --diff <slice>/pr.diff --commit $(git rev-parse HEAD) --lang <lang> --out <slice>/pr-review.json
    gh api repos/{owner}/{repo}/pulls/<n>/reviews --method POST --input <slice>/pr-review.json
    ```
-   O script só põe inline os achados cujas linhas estão no diff do PR; o resto e os nits vão agrupados no corpo da review. Se o `gh api` falhar com 422 (linha fora do diff), apague `comments` do payload, mova-os para o corpo e reenvie. Não perca achados.
+   The script only posts inline the findings whose lines are in the PR diff. The rest, and the nits, are grouped in the review body.
 
-O `pr.diff` precisa ser o mesmo diff que o PR mostra, por isso a base é sempre a branch-alvo do PR (a integração ou a base), não a `parent`. Numa fatia empilhada ainda não mergeada, o PR também mostra as fatias anteriores; isso é esperado.
+   If `gh api` fails with 422 (a line outside the diff), remove `comments` from the payload, move them into the body and send it again. Don't lose any findings.
+
+`pr.diff` must be the same diff the PR shows, so its base is always the PR's target branch (the integration branch or the base), not the `parent`. On a stacked slice whose predecessors are not merged yet, the PR also shows the earlier slices. That is expected.
 
 ## Draft
 
-- PR com blocker pendente após a última rodada nasce como `--draft`.
-- Para tirar do draft depois que o usuário resolver: `gh pr ready <n>`.
+- A PR that still has a blocker after the last round is created with `--draft`.
+- Once the user resolves it, mark it ready with `gh pr ready <n>`.
 
-## Restack (rebase das fatias empilhadas)
+## Restack (rebasing stacked slices)
 
-Quando a fatia `k` é mergeada na integração (com squash, rebase ou merge commit), cada fatia seguinte é reaplicada sobre o novo ponto:
+When slice `k` is merged into the integration branch (by squash, rebase or merge commit), each later slice is replayed onto the new point:
 
 ```bash
 git fetch origin
-# fatia k+1 saiu de k; troca a base antiga (parentSha) pela integração atualizada
-git rebase --onto origin/<integração> <parentSha de k+1> <branch k+1>
-# fatias k+2… continuam empilhadas sobre a fatia anterior, já reescrita
-git rebase --onto <branch k+1> <parentSha de k+2> <branch k+2>
+# slice k+1 was cut from k: swap the old base (parentSha) for the updated integration branch
+git rebase --onto origin/<integration> <parentSha of k+1> <branch k+1>
+# slices k+2… stay stacked on the previous, already rewritten slice
+git rebase --onto <branch k+1> <parentSha of k+2> <branch k+2>
 git push --force-with-lease origin <branch>
 ```
 
-Atualize `parent`/`parentSha` no `state.json` após cada rebase. Conflito:
+Update `parent` and `parentSha` in `state.json` after each rebase.
 
-- **Simples** (imports, lockfile, formatação, trechos adjacentes sem mudança de comportamento): resolva, `git rebase --continue`, rode o quality gate.
-- **De lógica** (as duas versões mudam comportamento): `git rebase --abort`, pare e chame o usuário com os arquivos em conflito.
+If there is a conflict:
 
-## Back-merge de hotfix
+- **Simple** (imports, lockfile, formatting, adjacent hunks that don't change behavior): resolve it, run `git rebase --continue` and run the quality gate.
+- **Logic** (both sides change behavior): run `git rebase --abort`, stop, and show the user the conflicting files.
 
-Depois do merge do hotfix em `main`:
+## Hotfix back-merge
+
+After the hotfix is merged into `main`:
 
 ```bash
 git fetch origin
 git switch -c chore/backmerge-<slug> origin/main
 git push -u origin chore/backmerge-<slug>
-gh pr create --base <hotfixBackMerge> --head chore/backmerge-<slug> --title "chore(release): back-merge <slug> para <dev>" --body-file <arquivo>
+gh pr create --base <hotfixBackMerge> --head chore/backmerge-<slug> --title "chore(release): back-merge <slug> into <dev>" --body-file <file>
 ```
 
 ## Commits
 
-Conventional commits com escopo: `feat(orders): add ownership check`. Correções de review: `fix(review): <o que mudou>`. **Sem trailers de coautoria nem menção a IA** em commits, PRs e comentários.
+Use conventional commits with a scope: `feat(orders): add ownership check`. Review fixes use `fix(review): <what changed>`. The type and scope are keywords; the description follows `<lang>`.
+
+**No co-author trailers and no mention of AI** in commits, PRs or comments.

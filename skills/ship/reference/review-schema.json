@@ -1,36 +1,36 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Saída de um revisor do flow",
-  "description": "Todo revisor (e o browser-tester) devolve exatamente um objeto neste formato, num bloco ```json. Validado por scripts/review.mjs validate.",
+  "title": "flow reviewer output",
+  "description": "Every reviewer (and the browser-tester) returns exactly one object in this format, inside a ```json block. Validated by scripts/review.mjs validate. Prose fields (summary, category, evidence, fix, builderNote) are written in the run language (flow.json.language).",
   "type": "object",
   "required": ["reviewer", "round", "summary", "findings"],
   "properties": {
     "reviewer": { "enum": ["security", "ux", "ui", "code", "browser"] },
     "round": { "type": "integer", "minimum": 1 },
-    "summary": { "type": "string", "minLength": 1, "description": "Uma frase sobre o estado da fatia." },
+    "summary": { "type": "string", "minLength": 1, "description": "One sentence on the state of the slice." },
     "findings": {
       "type": "array",
-      "description": "Vazia quando não há achado concreto.",
+      "description": "Empty when there are no concrete findings.",
       "items": {
         "type": "object",
         "required": ["id", "severity", "category", "file", "line", "evidence", "fix"],
         "properties": {
-          "id": { "type": "string", "description": "Prefixo do revisor + número: SEC-001, UX-001, UI-001, CODE-001, BRW-001. Na rodada 2, achado reavaliado mantém o id da rodada 1." },
+          "id": { "type": "string", "description": "Reviewer prefix + number: SEC-001, UX-001, UI-001, CODE-001, BRW-001. In round 2, a re-evaluated finding keeps its round-1 id." },
           "severity": { "enum": ["blocker", "major", "minor", "nit"] },
-          "category": { "type": "string", "description": "Ex.: \"A01 Broken Access Control\", \"WCAG 2.4.7 Foco visível\", \"Teste ausente\"." },
-          "file": { "type": "string", "description": "Caminho relativo à raiz do repositório, com /." },
-          "line": { "type": ["integer", "null"], "minimum": 1, "description": "Linha no arquivo novo. null só para achado sem linha (ex.: arquivo inteiro, comportamento na tela)." },
-          "evidence": { "type": "string", "description": "O que foi observado, concreto e verificável." },
-          "fix": { "type": "string", "description": "Correção sugerida." },
-          "checklistRef": { "type": "string", "description": "<checklist>.md#<ID do item>, ex.: security.md#A01." },
-          "contested": { "type": "boolean", "description": "Rodada 2: true quando o builder contestou e o revisor mantém o achado." },
-          "builderNote": { "type": "string", "description": "Rodada 2: motivo dado pelo builder ao contestar." }
+          "category": { "type": "string", "description": "E.g. \"A01 Broken Access Control\", \"WCAG 2.4.7 Focus Visible\", \"Missing test\"." },
+          "file": { "type": "string", "description": "Path relative to the repository root, with /." },
+          "line": { "type": ["integer", "null"], "minimum": 1, "description": "Line in the new file. null only for findings without a line (e.g. whole file, on-screen behavior)." },
+          "evidence": { "type": "string", "description": "What was observed, concrete and verifiable." },
+          "fix": { "type": "string", "description": "Suggested fix." },
+          "checklistRef": { "type": "string", "description": "<checklist>.md#<item ID>, e.g. security.md#A01." },
+          "contested": { "type": "boolean", "description": "Round 2: true when the builder disputed the finding and the reviewer keeps it." },
+          "builderNote": { "type": "string", "description": "Round 2: the reason the builder gave when disputing." }
         }
       }
     },
     "artifacts": {
       "type": "array",
-      "description": "Só browser-tester: screenshots e relatórios gerados.",
+      "description": "browser-tester only: screenshots and reports it produced.",
       "items": {
         "type": "object",
         "required": ["type", "path"],

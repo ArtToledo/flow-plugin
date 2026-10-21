@@ -1,35 +1,36 @@
-# Estado de execução
+# Run state
 
-Tudo que o `/ship` gera fica em `.claude/flow-runs/<slug>/`, que está no `.gitignore`.
+Everything `/ship` produces lives in `.claude/flow-runs/<slug>/`, which is in `.gitignore`.
 
 ```
 .claude/flow-runs/<slug>/
   state.json
-  request.md                      # pedido original, como o usuário escreveu
-  spec.md                         # spec aprovada (fatiada)
+  request.md                      # original request, verbatim
+  spec.md                         # approved spec (sliced)
   slice-01/
-    gate-<tentativa>.log          # saída do quality gate que falhou
+    gate-<attempt>.log            # output of a failed quality gate
     round-1/
-      diff.patch                  # git diff <base>...HEAD da fatia
-      route.json                  # saída de scripts/route.mjs
-      code.json  security.json …  # resposta validada de cada revisor
-      consolidated.json           # saída de scripts/review.mjs consolidate
-      builder-response.md         # respostas do builder aos achados
-      screens/                    # screenshots do browser-tester
+      diff.patch                  # git diff <base>...HEAD for the slice
+      route.json                  # output of scripts/route.mjs
+      code.json  security.json …  # validated reply of each reviewer
+      consolidated.json           # output of scripts/review.mjs consolidate
+      builder-response.md         # builder replies to the findings
+      screens/                    # browser-tester screenshots
     round-2/ …
-    pr-review.json                # payload enviado ao GitHub
-  .playwright/                    # saída bruta do Playwright MCP (movida para screens/)
-  server/                         # pid e log do servidor de dev
+    pr-review.json                # payload sent to GitHub
+  .playwright/                    # raw Playwright MCP output (moved into screens/)
+  server/                         # dev server pid and log
 ```
 
 ## state.json
 
-Grave o `state.json` **sempre** que uma etapa terminar, antes de começar a próxima. É ele que permite o `--resume`.
+Write `state.json` **every time** a step finishes, before starting the next one. This file is what makes `--resume` possible.
 
 ```json
 {
   "slug": "checkout",
-  "request": "Adicionar checkout com PIX",
+  "request": "Add PIX checkout",
+  "language": "en",
   "nature": "feature",
   "builderModel": "opus",
   "base": "dev",
@@ -40,8 +41,8 @@ Grave o `state.json` **sempre** que uma etapa terminar, antes de começar a pró
   "slices": [
     {
       "n": 1,
-      "title": "modelo",
-      "branch": "feat/checkout-01-modelo",
+      "title": "model",
+      "branch": "feat/checkout-01-model",
       "parent": "feat/checkout",
       "parentSha": "abc1234",
       "status": "pr-open",
@@ -60,13 +61,14 @@ Grave o `state.json` **sempre** que uma etapa terminar, antes de começar a pró
 }
 ```
 
-| Campo | Valores |
-| ----- | ------- |
-| `phase` | `triage` → `spec` → `spec-approved` → `slices` → `finalized` (ou `stopped`, com `stopReason`) |
+| Field | Values |
+| ----- | ------ |
+| `language` | `en` or `pt-BR`, copied from `flow.json` at the start. It stays fixed for the whole run, including `--resume`. |
+| `phase` | `triage` → `spec` → `spec-approved` → `slices` → `finalized`, or `stopped` with a `stopReason` |
 | `slices[].status` | `pending`, `building`, `reviewing`, `pr-open`, `draft`, `merged`, `stopped` |
 | `slices[].step` | `build`, `gate`, `route`, `review`, `consolidate`, `fix`, `push`, `pr`, `comments`, `done` |
-| `parent` | Branch de onde a fatia saiu: integração (fatia 01), a fatia anterior (empilhada) ou a base (fatia única). |
-| `parentSha` | SHA da `parent` no momento em que a fatia foi criada; usado no `--restack`. |
-| `roundHeads` | HEAD da fatia no fim de cada rodada; a rodada 2 usa `roundHeads["1"]` para o diff incremental. |
+| `parent` | The branch the slice was cut from: the integration branch (slice 01), the previous slice (stacked) or the base (single slice). |
+| `parentSha` | The `parent` SHA when the slice was created. Used by `--restack`. |
+| `roundHeads` | The slice HEAD at the end of each round. Round 2 uses `roundHeads["1"]` for the incremental diff. |
 
-Ao retomar, a fonte de verdade é o git e o GitHub; o `state.json` diz onde olhar. Se divergirem (ex.: branch apagada, PR fechado), pare e pergunte.
+When resuming, git and GitHub are the source of truth, and `state.json` tells you where to look. If they disagree (e.g. a deleted branch or a closed PR), stop and ask the user.

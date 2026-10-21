@@ -1,76 +1,76 @@
-# Checklist de segurança
+# Security checklist
 
-A base é o OWASP Top 10:2025 e o ASVS 5.0 nível 2. Em `checklistRef`, cite como `security.md#<ID>` (ex.: `security.md#A01`).
+Based on the OWASP Top 10:2025 and ASVS 5.0 level 2. Cite items in `checklistRef` as `security.md#<ID>` (e.g. `security.md#A01`).
 
-## A01 — Controle de acesso
+## A01 — Broken Access Control
 
-- Autorização **por recurso**: a consulta filtra pelo dono, tenant ou escopo do token, e não só "está logado".
-- Negar por padrão: rota ou handler novo exige autorização explícita.
-- IDs vindos do cliente nunca são confiáveis sem a checagem de posse (IDOR).
-- SSRF (agora em A01): URL de saída montada com entrada do usuário passa por allowlist de host e esquema, e bloqueia IPs internos e metadata (`169.254.169.254`).
-- CORS não reflete `Origin` arbitrária com credenciais.
+- **Per-resource** authorization: the query filters by owner, tenant or token scope, not just "is logged in".
+- Deny by default: every new route or handler requires explicit authorization.
+- IDs coming from the client are never trusted without an ownership check (IDOR).
+- SSRF (now part of A01): an outbound URL built from user input goes through a host and scheme allowlist, and blocks internal IPs and metadata endpoints (`169.254.169.254`).
+- CORS never reflects an arbitrary `Origin` together with credentials.
 
-## A02 — Configuração de segurança
+## A02 — Security Misconfiguration
 
-- CORS restrito às origens conhecidas.
+- CORS is restricted to known origins.
 - Headers: CSP, HSTS, `X-Content-Type-Options`, `frame-ancestors`.
-- Debug, stack trace e endpoints de diagnóstico desligados em produção.
-- IAM da AWS (e equivalentes) com menor privilégio, sem `*` em ação nem em recurso sem justificativa.
-- Nada de bucket ou blob público, nem security group aberto a `0.0.0.0/0` em porta administrativa.
-- Contêiner sem rodar como root quando der, e imagem base fixada.
+- Debug mode, stack traces and diagnostic endpoints are off in production.
+- AWS IAM (and equivalents) follows least privilege: no `*` in actions or resources without a reason.
+- No public buckets or blobs, and no security group open to `0.0.0.0/0` on an admin port.
+- Containers don't run as root when avoidable, and base images are pinned.
 
-## A03 — Cadeia de suprimentos
+## A03 — Software Supply Chain Failures
 
-- Dependência nova justificada (tamanho, manutenção, licença) e sem alternativa nativa óbvia.
-- Lockfile atualizado junto com o manifesto.
-- `npm audit` (ou equivalente) sem high ou critical nas dependências novas.
-- Actions do CI fixadas por SHA, não por tag.
-- Scripts de `postinstall` de dependências novas revisados.
+- Every new dependency is justified (size, maintenance, license) and has no obvious native alternative.
+- The lockfile is updated together with the manifest.
+- `npm audit` (or the equivalent) shows no high or critical issues in new dependencies.
+- CI actions are pinned by SHA, not by tag.
+- `postinstall` scripts of new dependencies have been reviewed.
 
-## A04 — Falhas criptográficas
+## A04 — Cryptographic Failures
 
-- Senha com argon2id ou bcrypt (custo adequado), nunca hash rápido nem reversível.
-- Segredo nunca no código, em fixture versionada ou em log. Use Secrets Manager, KMS ou variável de ambiente.
-- TLS em toda chamada externa, sem `rejectUnauthorized: false`.
-- Aleatoriedade de segurança com CSPRNG (`crypto.randomUUID`, `randomBytes`), nunca `Math.random`.
+- Passwords use argon2id or bcrypt with a proper cost, never a fast or reversible hash.
+- Secrets never appear in code, versioned fixtures or logs; they live in Secrets Manager, KMS or environment variables.
+- Every external call uses TLS, with no `rejectUnauthorized: false`.
+- Security randomness comes from a CSPRNG (`crypto.randomUUID`, `randomBytes`), never `Math.random`.
 
-## A05 — Injeção
+## A05 — Injection
 
-- Queries parametrizadas, inclusive `raw`, `$queryRawUnsafe` e `query()` de ORM.
-- Nada de `exec`, `spawn` com `shell: true` ou `eval` com entrada do usuário.
-- Saída escapada no frontend, sem `dangerouslySetInnerHTML` ou `v-html` com dado não sanitizado.
-- Path traversal: caminhos de arquivo vindos do usuário normalizados e confinados.
-- Cabeçalhos e logs sem CRLF vindo do usuário.
+- Queries are parameterized, including ORM `raw`, `$queryRawUnsafe` and `query()`.
+- No `exec`, no `spawn` with `shell: true`, and no `eval` on user input.
+- Output is escaped in the frontend: no `dangerouslySetInnerHTML` or `v-html` with unsanitized data.
+- Path traversal: file paths from users are normalized and confined.
+- No user-supplied CRLF in headers or logs.
 
-## A06 — Design inseguro
+## A06 — Insecure Design
 
-- Rate limit em login, cadastro, recuperação de senha e endpoints caros.
-- Idempotência em pagamentos e em consumidores de fila (chave de idempotência).
-- Limites de negócio: valor, quantidade, tentativas, tamanho de upload.
-- Validação de entrada no servidor com schema, nunca só no cliente.
+- Rate limiting on login, sign-up, password recovery and expensive endpoints.
+- Idempotency for payments and queue consumers (idempotency key).
+- Business limits: amount, quantity, attempts, upload size.
+- Input validated on the server with a schema, never only on the client.
 
-## A07 — Falhas de autenticação
+## A07 — Authentication Failures
 
-- JWT valida `alg` (sem `none`, algoritmo fixo), `exp`, `aud` e `iss`.
-- Logout e troca de senha invalidam sessão e refresh token.
-- Proteção contra força bruta e enumeração de usuário (mensagens genéricas).
-- Cookies de sessão com `HttpOnly`, `Secure` e `SameSite`.
+- JWT checks `alg` (no `none`, fixed algorithm), `exp`, `aud` and `iss`.
+- Logout and password changes invalidate the session and the refresh token.
+- Protection against brute force and user enumeration (generic messages).
+- Session cookies use `HttpOnly`, `Secure` and `SameSite`.
 
-## A08 — Integridade de software e dados
+## A08 — Software or Data Integrity Failures
 
-- Webhooks com assinatura verificada (HMAC com comparação em tempo constante) e proteção contra replay.
-- Desserialização segura, sem `pickle`, `yaml.load` inseguro nem `JSON.parse` de entrada para objeto com protótipo.
-- Uploads validados por conteúdo, não só pela extensão.
+- Webhooks have their signatures verified (HMAC with constant-time comparison) and are protected against replay.
+- Deserialization is safe: no `pickle`, no unsafe `yaml.load`, and no `JSON.parse` of input into prototype-bearing objects.
+- Uploads are validated by content, not just by extension.
 
-## A09 — Logs e alertas
+## A09 — Security Logging and Alerting Failures
 
-- Eventos de segurança logados: login, falha de autorização, mudança de permissão.
-- Sem PII, token, senha ou documento nos logs (LGPD). Mascare quando precisar correlacionar.
-- Nada de log com o corpo inteiro de requisições sensíveis.
+- Security events are logged: login, authorization failures, permission changes.
+- No personal data, tokens, passwords or document numbers in logs (GDPR/LGPD). Mask them when you need correlation.
+- Full bodies of sensitive requests are never logged.
 
-## A10 — Condições excepcionais
+## A10 — Mishandling of Exceptional Conditions
 
-- Falha fechada: erro na checagem de permissão nega o acesso.
-- Sem stack trace nem mensagem interna para o cliente.
-- Timeouts em toda chamada externa, retries com backoff, DLQ nas filas.
-- Exceções não tratadas não derrubam o processo inteiro sem log.
+- Fail closed: an error during a permission check denies access.
+- No stack traces or internal messages sent to the client.
+- Timeouts on every external call, retries with backoff, and DLQs on queues.
+- Unhandled exceptions never take down the whole process without being logged.

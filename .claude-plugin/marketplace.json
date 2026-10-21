@@ -1,6 +1,6 @@
 {
   "name": "flow-marketplace",
-  "description": "Marketplace do plugin flow: spec → builder → review → PR",
+  "description": "Marketplace for the flow plugin: spec → builder → review → PR",
   "owner": {
     "name": "Arthur Toledo"
   },
@@ -8,7 +8,7 @@
     {
       "name": "flow",
       "source": "./",
-      "description": "Fluxo spec → builder → review → PR com subagentes especializados"
+      "description": "Spec → builder → review → PR flow with specialized subagents, in English or Brazilian Portuguese"
     }
   ]
 }
