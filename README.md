@@ -1,60 +1,89 @@
 # flow
 
-Plugin do Claude Code que leva uma entrega do pedido ao PR: triagem, spec fatiada, implementação com TDD, quality gate, revisores especializados em paralelo, loop de correção limitado e PRs empilhados com os achados comentados nas linhas certas.
+A Claude Code plugin that takes a change from request to pull request. It triages the request, writes a spec split into slices, implements each slice with TDD, runs a quality gate, reviews the code with specialized agents in parallel, sends serious findings back to the builder for a capped number of rounds, and opens stacked PRs with the findings posted as comments on the right lines.
 
-Este repositório é, ao mesmo tempo, o plugin e o marketplace que o distribui.
+This repository is both the plugin and the marketplace that distributes it.
 
-## Instalação
+## How it works
+
+```
+/flow:ship "add PIX checkout"
+   │
+   ├─ triage ............ change type, builder model, base branch
+   ├─ spec-writer ....... spec split into slices (≈400 lines of diff each)
+   ├─ human gate ........ you approve the spec or ask for changes
+   └─ for each slice
+        ├─ builder ...... TDD + conventional commits
+        ├─ quality gate . lint, typecheck, tests, build, e2e (from your project)
+        ├─ reviewers .... chosen by the files changed, run in parallel
+        ├─ fix loop ..... only blocker/major findings, at most 2 rounds
+        └─ pull request . inline comments; opens as draft if blockers remain
+```
+
+A large feature becomes a series of medium-sized stacked PRs that all target an integration branch. Only the integration branch opens a PR to your base branch. A hotfix goes straight to `main`, and its back-merge PR is opened afterwards.
+
+## Install
 
 ```bash
 claude plugin marketplace add ArtToledo/flow-plugin
 claude plugin install flow@flow-marketplace
 ```
 
-Para desenvolvimento local, use `claude --plugin-dir /caminho/para/flow-plugin`. Depois de editar arquivos do plugin, rode `/reload-plugins`.
+For local development, run `claude --plugin-dir /path/to/flow-plugin`. After editing plugin files, run `/reload-plugins`.
 
-## Requisitos
+## Requirements
 
 - Claude Code CLI
-- `git` e `gh`, autenticado com `gh auth login`
-- Node.js 18 ou superior, usado pelos scripts do plugin e pelo Playwright MCP
+- `git` and `gh`, authenticated with `gh auth login`
+- Node.js 18 or later (the plugin scripts and the Playwright MCP server need it)
 
-## Uso
+## Usage
 
-| Comando | O que faz |
-| ------- | --------- |
-| `/flow:flow-init` | Mapeia o projeto (branches, comandos de qualidade, stack, servidor de dev) e grava `.claude/flow.json`. Roda uma vez por projeto. |
-| `/flow:ship <pedido>` | Executa o fluxo completo para uma entrega. |
-| `/flow:ship --resume <slug>` | Retoma uma execução interrompida. |
-| `/flow:ship --restack <slug>` | Faz rebase das fatias empilhadas depois que uma delas é mergeada. |
-| `/flow:ship --finalize <slug>` | Abre o PR integração → base, ou o back-merge de um hotfix. |
+| Command | What it does |
+| ------- | ------------ |
+| `/flow:flow-init` | Maps the project (branches, quality commands, stack, dev server) and writes `.claude/flow.json`. Run it once per project. |
+| `/flow:ship <request>` | Runs the full flow for one change. |
+| `/flow:ship --resume <slug>` | Resumes an interrupted run. |
+| `/flow:ship --restack <slug>` | Rebases the stacked slices after one of them is merged. |
+| `/flow:ship --finalize <slug>` | Opens the integration → base PR, or the back-merge PR for a hotfix. |
 
-Os artefatos de execução (spec, achados, estado e screenshots) ficam em `.claude/flow-runs/<slug>/`. O `/flow:flow-init` adiciona essa pasta ao `.gitignore`.
+Run artifacts (spec, findings, state and screenshots) are stored in `.claude/flow-runs/<slug>/`. `/flow:flow-init` adds that folder to `.gitignore`.
 
-## Agentes
+## Agents
 
-| Agente | Modelo | Papel |
-| ------ | ------ | ----- |
-| `flow:spec-writer` | Opus | Spec fatiada com critérios de aceite testáveis |
-| `flow:builder` | Opus (Fable por escolha na triagem) | Único que escreve código; TDD e conventional commits |
-| `flow:code-reviewer` | Sonnet | Roda sempre |
-| `flow:security-reviewer` | Sonnet | OWASP Top 10:2025 / ASVS 5.0 |
-| `flow:ux-reviewer` | Sonnet | Nielsen + WCAG 2.2 AA |
-| `flow:ui-reviewer` | Sonnet | Design system, contraste, responsivo, Core Web Vitals |
-| `flow:browser-tester` | Sonnet | Navegador real via Playwright MCP |
+| Agent | Model | Role |
+| ----- | ----- | ---- |
+| `flow:spec-writer` | Opus | Writes the spec as slices with testable acceptance criteria |
+| `flow:builder` | Opus (or Fable, chosen at triage) | The only agent that writes code; uses TDD and conventional commits |
+| `flow:code-reviewer` | Sonnet | Runs on every slice: tests, architecture, errors, concurrency, performance |
+| `flow:security-reviewer` | Sonnet | OWASP Top 10:2025 and ASVS 5.0 |
+| `flow:ux-reviewer` | Sonnet | Nielsen's heuristics and WCAG 2.2 AA behavior |
+| `flow:ui-reviewer` | Sonnet | Design tokens, contrast, responsive layout, Core Web Vitals |
+| `flow:browser-tester` | Sonnet | Tests the slice in a real browser through Playwright MCP: acceptance criteria, console, network, 3 viewports, keyboard, axe-core, Lighthouse |
 
-Os revisores só leem e devolvem JSON no contrato `skills/ship/reference/review-schema.json`. Só `blocker` e `major` voltam ao builder, em no máximo 2 rodadas. Se sobrar blocker, o PR abre como draft.
+The reviewers can't edit code. Each one returns JSON in the format defined in [`skills/ship/reference/review-schema.json`](skills/ship/reference/review-schema.json). Only `blocker` and `major` findings go back to the builder, for at most 2 rounds. `minor` and `nit` findings become PR comments. If a blocker is still open after the last round, the PR opens as a draft with the open findings listed at the top.
 
-## Personalização por projeto
+## Design choices
 
-- `.claude/flow.json`: branches, prefixos, comandos, roteamento de revisores por glob, servidor de dev e limites.
-- `.claude/checklists/<security|ux|ui|code>.md`: estende o checklist do plugin. Para substituí-lo, comece o arquivo com `<!-- mode: replace -->`.
+- **The orchestration runs in the main session.** The human gates (triage and spec approval) need to talk to you, and that works reliably there.
+- **Deterministic logic lives in scripts, not prompts.** Reviewer routing by glob, review validation and deduplication, inline-comment payloads (only on lines that are in the diff) and the dev server lifecycle are handled by dependency-free Node scripts in [`scripts/`](scripts/), with unit tests.
+- **The builder keeps its context between rounds.** It is resumed with `SendMessage` instead of being started from scratch, so it remembers why it wrote what it wrote.
+- **No AI attribution** is added to commits, PRs or comments.
 
-## Desenvolvimento
+## Per-project customization
+
+- `.claude/flow.json` holds the base branch for each change type, branch prefixes, quality commands, reviewer routing globs, dev server settings and loop limits.
+- `.claude/checklists/<security|ux|ui|code>.md` extends the plugin's checklist. To replace it instead, start the file with `<!-- mode: replace -->`.
+
+## Development
 
 ```bash
 node --test scripts/test/*.test.mjs
 claude plugin validate .
 ```
 
-O desenho completo está em [`PLAN.md`](PLAN.md). As verificações de formato feitas na fase 1 estão em [`docs/fase-1-verificacao.md`](docs/fase-1-verificacao.md).
+The full design (in Portuguese) is in [`PLAN.md`](PLAN.md). The Phase 1 format checks are in [`docs/fase-1-verificacao.md`](docs/fase-1-verificacao.md).
+
+## Status
+
+All five phases are implemented, and the scripts, the plugin installation and the agent loading have been tested. The end-to-end acceptance run on a real feature is still pending.
