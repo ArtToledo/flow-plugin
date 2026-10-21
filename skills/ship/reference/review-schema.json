@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Saída de um revisor do flow",
+  "description": "Todo revisor (e o browser-tester) devolve exatamente um objeto neste formato, num bloco ```json. Validado por scripts/review.mjs validate.",
+  "type": "object",
+  "required": ["reviewer", "round", "summary", "findings"],
+  "properties": {
+    "reviewer": { "enum": ["security", "ux", "ui", "code", "browser"] },
+    "round": { "type": "integer", "minimum": 1 },
+    "summary": { "type": "string", "minLength": 1, "description": "Uma frase sobre o estado da fatia." },
+    "findings": {
+      "type": "array",
+      "description": "Vazia quando não há achado concreto.",
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "category", "file", "line", "evidence", "fix"],
+        "properties": {
+          "id": { "type": "string", "description": "Prefixo do revisor + número: SEC-001, UX-001, UI-001, CODE-001, BRW-001. Na rodada 2, achado reavaliado mantém o id da rodada 1." },
+          "severity": { "enum": ["blocker", "major", "minor", "nit"] },
+          "category": { "type": "string", "description": "Ex.: \"A01 Broken Access Control\", \"WCAG 2.4.7 Foco visível\", \"Teste ausente\"." },
+          "file": { "type": "string", "description": "Caminho relativo à raiz do repositório, com /." },
+          "line": { "type": ["integer", "null"], "minimum": 1, "description": "Linha no arquivo novo. null só para achado sem linha (ex.: arquivo inteiro, comportamento na tela)." },
+          "evidence": { "type": "string", "description": "O que foi observado, concreto e verificável." },
+          "fix": { "type": "string", "description": "Correção sugerida." },
+          "checklistRef": { "type": "string", "description": "<checklist>.md#<ID do item>, ex.: security.md#A01." },
+          "contested": { "type": "boolean", "description": "Rodada 2: true quando o builder contestou e o revisor mantém o achado." },
+          "builderNote": { "type": "string", "description": "Rodada 2: motivo dado pelo builder ao contestar." }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "description": "Só browser-tester: screenshots e relatórios gerados.",
+      "items": {
+        "type": "object",
+        "required": ["type", "path"],
+        "properties": {
+          "type": { "enum": ["screenshot", "report"] },
+          "path": { "type": "string" },
+          "note": { "type": "string" }
+        }
+      }
+    }
+  }
+}

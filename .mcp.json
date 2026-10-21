@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["--yes", "@playwright/mcp@0.0.83", "--headless", "--isolated", "--output-dir", ".claude/flow-runs/.playwright"]
+    }
+  }
+}
