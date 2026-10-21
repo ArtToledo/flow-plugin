@@ -10,6 +10,10 @@ Este repositório é, ao mesmo tempo, o plugin e o marketplace que o distribui.
 
 ## Como funciona
 
+<p align="center">
+  <img src="docs/images/flow-pt-BR.png" alt="Fluxo do /flow-init e do /ship: triagem, spec, gate humano, builder com TDD, quality gate, revisores em paralelo, loop de correção e PRs" width="640">
+</p>
+
 ```
 /flow:ship "adicionar checkout com PIX"
    │
