@@ -314,11 +314,14 @@ Cinco fases, cada uma testável sozinha num projeto de teste antes de seguir. Pa
 
 Como teste de aceite do plugin inteiro, rode uma feature pequena que mexa em backend e frontend e confira: revisores certos acionados, loop parando na 2ª rodada, PRs nas branches certas e comentários nas linhas certas.
 
-- [ ] Fase 1: esqueleto e verificação
-- [ ] Fase 2: `/flow-init`
-- [ ] Fase 3: spec writer e builder
-- [ ] Fase 4: revisores e loop
-- [ ] Fase 5: PRs e fatiamento
+- [x] Fase 1: esqueleto e verificação (ver `docs/fase-1-verificacao.md`)
+- [x] Fase 2: `/flow-init`
+- [x] Fase 3: spec writer e builder
+- [x] Fase 4: revisores e loop
+- [x] Fase 5: PRs e fatiamento
+- [ ] Teste de aceite do plugin inteiro numa feature real (backend + frontend)
+
+O plugin se chama `flow`, então os comandos ficam `/flow:flow-init` e `/flow:ship`, e os agentes `flow:<nome>`. A lógica determinística está em `scripts/`, em Node sem dependências: detecção, roteamento por glob, validação e consolidação das reviews, payload de comentários inline e servidor de dev.
 
 ## Riscos e pontos em aberto
 
