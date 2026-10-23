@@ -132,7 +132,12 @@ export function commentableLines(diffText) {
 
 const LABEL = { blocker: '🔴 blocker', major: '🟠 major', minor: '🟡 minor', nit: '⚪ nit' };
 
-function findingBody(f, t) {
+// Hidden marker that ties a PR review thread back to its findings, so a later
+// re-review can reply to it and resolve it (see threadsToResolve).
+export const marker = (slice, ids) => `<!-- flow:slice=${slice ?? '-'} ids=${ids.join(',')} -->`;
+const MARKER = /<!-- flow:slice=(\S+) ids=(\S+) -->/;
+
+function findingBody(f, t, slice) {
   const lines = [
     `**${LABEL[f.severity]}** · \`${f.ids.join(', ')}\` · ${f.reviewers.join(', ')} · ${f.category}`,
     '',
@@ -142,29 +147,37 @@ function findingBody(f, t) {
   ];
   if (f.checklistRef) lines.push('', `${t.checklist}: \`${f.checklistRef}\``);
   if (f.contested) lines.push('', t.pending(f.builderNote));
+  if (slice !== undefined) lines.push('', marker(slice, f.ids));
   return lines.join('\n');
 }
 
 // Payload for POST /repos/{owner}/{repo}/pulls/{n}/reviews. The event is always
 // COMMENT: the author cannot request changes on their own PR. Nits and findings
-// outside the diff go grouped into the review body.
-export function buildReviewPayload(consolidated, diffText, { commitId, lang = 'en' } = {}) {
+// outside the diff go grouped into the review body, together with one summary
+// line per reviewer. Findings in skipIds already have an open thread and are
+// not posted again.
+export function buildReviewPayload(consolidated, diffText, { commitId, lang = 'en', slice, skipIds = new Set() } = {}) {
   const t = messages(lang);
   const lines = commentableLines(diffText);
   const comments = [];
   const general = [];
   const nits = [];
   for (const f of consolidated.findings) {
+    if (f.ids.some(id => skipIds.has(id))) continue;
     if (f.severity === 'nit') {
       nits.push(f);
     } else if (f.line !== null && lines.get(f.file)?.has(f.line)) {
-      comments.push({ path: f.file, line: f.line, side: 'RIGHT', body: findingBody(f, t) });
+      comments.push({ path: f.file, line: f.line, side: 'RIGHT', body: findingBody(f, t, slice) });
     } else {
       general.push(f);
     }
   }
   const { blocker, major, minor, nit } = consolidated.counts;
-  const body = [t.reviewTitle(consolidated.round), '', `${blocker} blocker · ${major} major · ${minor} minor · ${nit} nit`];
+  const body = [t.reviewTitle(consolidated.round, slice), '', `${blocker} blocker · ${major} major · ${minor} minor · ${nit} nit`];
+  body.push('', t.reviewersHeader, '| --- | --- |');
+  for (const r of consolidated.reviewers) body.push(`| ${r.reviewer} | ${r.summary.replace(/\|/g, '\\|').replace(/\n+/g, ' ')} |`);
+  const screens = consolidated.reviewers.flatMap(r => r.artifacts).filter(a => a.type === 'screenshot');
+  if (screens.length) body.push('', t.screenshots(screens.map(s => `\`${s.path}\``).join(', ')));
   if (general.length) {
     body.push('', t.outsideDiff, '');
     for (const f of general) body.push(`- \`${f.file}${f.line ? `:${f.line}` : ''}\` — ${findingBody(f, t).replace(/\n+/g, ' ')}`);
@@ -197,4 +210,56 @@ export function reviewerSummary(consolidated, reviewer, { lang = 'en' } = {}) {
   const screens = meta.artifacts.filter(a => a.type === 'screenshot');
   if (screens.length) lines.push('', t.screenshots(screens.map(s => `\`${s.path}\``).join(', ')));
   return lines.join('\n');
+}
+
+// Reads the builder's reply to the findings, one line per id:
+//   SEC-001: fixed — abc1234 | CODE-002: disputed — <reason> | UX-003: deferred — <reason>
+export function parseBuilderResponse(text) {
+  const result = new Map();
+  for (const line of text.split(/\r?\n/)) {
+    const m = line.match(/^[\s*-]*`?([A-Z]+-\d+)`?\s*:\s*(fixed|disputed|deferred)\b\s*(?:[—–:-]\s*)?(.*)$/i);
+    if (m) result.set(m[1], { status: m[2].toLowerCase(), note: m[3].trim() });
+  }
+  return result;
+}
+
+// A reviewer that is not called again in the next round keeps its previous
+// review: the findings the builder fixed are dropped, the disputed ones are
+// marked as contested, and everything else is carried as is.
+export function carryForward(review, responses, round) {
+  const findings = [];
+  for (const f of review.findings) {
+    const r = responses.get(f.id);
+    if (r?.status === 'fixed') continue;
+    findings.push(r?.status === 'disputed' ? { ...f, contested: true, builderNote: r.note } : f);
+  }
+  return { ...review, round, findings };
+}
+
+const findingIds = f => f.ids ?? [f.id];
+
+// Flow threads of a PR, from the GraphQL reviewThreads query used by threads.mjs.
+export function flowThreads(graphql) {
+  const nodes = graphql?.data?.repository?.pullRequest?.reviewThreads?.nodes ?? [];
+  const threads = [];
+  for (const node of nodes) {
+    const first = node.comments?.nodes?.[0];
+    const m = first?.body?.match(MARKER);
+    if (!m) continue;
+    threads.push({ threadId: node.id, commentId: first.databaseId, resolved: node.isResolved, slice: m[1], ids: m[2].split(',') });
+  }
+  return threads;
+}
+
+const sameSlice = (thread, slice) => slice === undefined || thread.slice === String(slice);
+
+// Ids that already have an open thread, so the next review doesn't repeat them.
+export function openThreadIds(threads, slice) {
+  return new Set(threads.filter(th => !th.resolved && sameSlice(th, slice)).flatMap(th => th.ids));
+}
+
+// Open threads whose findings no longer appear in the latest consolidated review.
+export function threadsToResolve(threads, consolidated, slice) {
+  const current = new Set(consolidated.findings.flatMap(findingIds));
+  return threads.filter(th => !th.resolved && sameSlice(th, slice) && th.ids.every(id => !current.has(id)));
 }
