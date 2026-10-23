@@ -310,6 +310,7 @@ Only for stacked mode. In single mode, say there is nothing to restack and stop.
 ## 9. `--resume <slug>`
 
 1. Read `state.json` (including `language`, `mode` and `prMode`, which win over `flow.json` for this run) and check git and GitHub: the current branch, commits and PRs. If the state does not match reality, show the difference and ask how to proceed.
+   - **Run started by an older version** (no `prMode` in `state.json`): set `prMode` to `stacked` when `integration` is set, otherwise `single`; set `mode: "full"`, `browser` from `flow.json`, `lighthouse: false`; and for each slice without `startSha`, use its `parentSha`. Write these fields before continuing. Its PR comments have no flow marker, so `--recheck` can't resolve them: say so.
 2. Resume from the recorded `phase` and `step`:
    - `spec` not yet approved: go back to the spec gate;
    - `slices`: continue the first slice that is not `pr-open`, `merged` or a resolved `draft`, from its `step`.
