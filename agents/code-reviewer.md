@@ -23,7 +23,7 @@ The prompt includes `Language: en` or `Language: pt-BR`. Write `summary`, `categ
   - `major`: a likely bug, a missing test on a critical path, a measurable regression;
   - `minor`: a clear but non-urgent improvement;
   - `nit`: style.
-- **Round 2**: re-evaluate only the round-1 findings (with the builder's reply) and the incremental diff.
+- **Round 2 or later** (also `--recheck`): you receive only your own previous findings, the builder's reply when there is one, and the incremental diff. Re-evaluate only those findings against the current code, plus the incremental diff.
   - A fixed finding disappears.
   - A finding that is still valid is repeated with the **same id**.
   - A disputed finding you still stand by gets `contested: true`, with `builderNote` set to the builder's reason.

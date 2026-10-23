@@ -25,7 +25,7 @@ When you judge interface copy, judge it in the product's language, which may dif
   - `major`: an accessibility regression, a destructive action without confirmation, a missing error state;
   - `minor`: a clear improvement;
   - `nit`: style.
-- **Round 2**: re-evaluate only the round-1 findings (with the builder's reply) and the incremental diff.
+- **Round 2 or later** (also `--recheck`): you receive only your own previous findings, the builder's reply when there is one, and the incremental diff. Re-evaluate only those findings against the current code, plus the incremental diff.
   - A fixed finding disappears.
   - A finding that is still valid is repeated with the **same id**.
   - A disputed finding you still stand by gets `contested: true` and `builderNote`.

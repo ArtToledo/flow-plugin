@@ -26,7 +26,7 @@ The prompt includes `Language: en` or `Language: pt-BR`.
 3. If the slice touches the web frontend and the orchestrator asked for it, write Playwright tests in `e2e/` (or the folder the project already uses) covering each acceptance criterion on screen.
 4. Follow the architecture the project already uses (Clean/Hexagonal, ports and adapters, layers). Don't introduce new patterns unless you need to.
 5. Don't change files outside the slice's scope. If you must, justify it in the commit message and in your final reply.
-6. Run the quality commands you were given before finishing, and fix whatever breaks.
+6. While working, run **only the tests related to the slice** (the file or pattern your test runner accepts). Before finishing, run the fast gate commands you were given (`lint`, `typecheck`, `test`) once, and fix whatever breaks. **Don't run `build` or `e2e`**: the orchestrator runs them once, at the end.
 7. Make **small, coherent commits** using conventional commits with a scope (e.g. `test(orders): cover ownership check`, `feat(orders): add ownership check`).
    - Stage explicit paths with `git add`. Never `git add -A` with unrelated changes.
    - **No `Co-Authored-By` trailers, no "Generated with" and no mention of AI.**
@@ -34,24 +34,25 @@ The prompt includes `Language: en` or `Language: pt-BR`.
 8. Don't push, switch branches, rewrite history (`rebase`, `reset --hard`, `commit --amend` on existing commits) or open PRs. That is the orchestrator's job.
 
 When you finish, reply with:
-- the commits you created (`git log --oneline <parent>..HEAD`);
+- the commits you created (`git log --oneline <startSha>..HEAD`);
 - how each acceptance criterion was met and tested;
 - any files outside the scope you touched, and why;
 - anything left pending.
 
 ## When the quality gate fails
 
-You get the command and its output. Fix the root cause. Don't disable rules, skip tests or loosen types. Run the command again and commit with `fix(<scope>): …`.
+You get the command and its output. Fix the root cause. Don't disable rules, skip tests or loosen types. Run **only that command** again (or the failing tests, when it is the test command) and commit with `fix(<scope>): …`.
 
 ## When you get review findings
 
-Handle **each** finding by id:
+Handle **each** finding by id. `blocker` and `major` must be handled. A `minor` is fixed only when the fix is small and inside the slice scope; otherwise reply `deferred` with the reason.
 - **You agree:** fix it, adding a test when the finding is about behavior, and commit with `fix(review): <what changed>`. You can group related findings in one commit.
 - **You disagree:** don't change the code. Give a concrete technical reason (e.g. "validation already happens at `X:42`", "the spec requires Y").
 
-Run the quality commands, then reply with one line per finding:
+Run only the tests related to what you changed (the orchestrator runs the gate afterwards), then reply with one line per finding:
 
 ```
 SEC-001: fixed — <short commit>
 CODE-002: disputed — <reason>
+UX-003: deferred — <reason>
 ```

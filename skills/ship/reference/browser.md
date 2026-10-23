@@ -1,6 +1,6 @@
 # Browser round
 
-This round runs when `route.json` has `"browser": true`. That requires `flow.json.browser` to be configured and a slice that touches the web frontend.
+This round runs **once per run**: on the last slice whose spec says "Touches web frontend: yes", when `state.browser` is `true` (full mode with `flow.json.browser` configured, or `--browser`). In round 2 or later it runs again only if it found a `blocker`; otherwise its findings are carried forward (`review.mjs carry`). Lite runs skip it unless `--browser` was passed.
 
 The `browser-tester` uses the Playwright MCP server declared in the plugin's `.mcp.json`. Projects don't need any extra setup.
 
@@ -18,7 +18,7 @@ The `browser-tester` uses the Playwright MCP server declared in the plugin's `.m
 }
 ```
 
-`seedCommand`, `testUser` and `prod` are optional. Without `prod`, the Lighthouse Core Web Vitals measurement is skipped, and the summary says so.
+`seedCommand`, `testUser` and `prod` are optional. Lighthouse needs a production build, which is slow, so it runs **only when `/ship` gets `--lighthouse`** and `prod` is configured. Otherwise the browser-tester skips it and the summary says so.
 
 ## Sequence (run by the skill, in the main session)
 
@@ -29,7 +29,7 @@ The `browser-tester` uses the Playwright MCP server declared in the plugin's `.m
    node "<plugin>/scripts/devserver.mjs" start --name dev --cmd "<devCommand>" --url "<url>" --ready "<readyPath>" --dir .claude/flow-runs/<slug>/server
    ```
    If it doesn't come up, handle it like a failed seed.
-4. **Lighthouse (only with `prod`)**: run `buildCommand`, then `devserver.mjs start --name prod --cmd "<startCommand>" --url "<prod.url>"`. If it uses the same port as dev, stop dev first and start it again afterwards.
+4. **Lighthouse (only when `state.lighthouse` is `true`)**: run `buildCommand`, then `devserver.mjs start --name prod --cmd "<startCommand>" --url "<prod.url>"`. If it uses the same port as dev, stop dev first and start it again afterwards.
 5. **Call the `browser-tester`** in the same message as the reviewers, in parallel, with the prompt described in `SKILL.md`.
 6. **Stop**: run `devserver.mjs stop --name dev` (and `--name prod`) **always**, including when there was an error. Check that nothing is left on the port.
 7. The screenshots saved by the agent go in `slice-NN/round-N/screens/`. The summary goes into the `browser` reviewer's PR comment. The files are not committed.

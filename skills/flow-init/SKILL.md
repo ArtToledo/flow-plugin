@@ -65,6 +65,8 @@ Read `package.json`, `CLAUDE.md` and the `src/` layout if you need them to fill 
 
 **Browser**: only for a web frontend with a detected `node.dev`. Use the detected `devCommand` and `url`, `readyPath` `/` (unless there is a known health route) and `viewports` `[320, 768, 1280]`.
 
+**PR mode**: `prMode: "single"` (one PR per `/ship` run). `"stacked"` (one PR per slice on an integration branch) is for teams that review very large changes in pieces; don't ask, just mention it in the summary.
+
 **Limits**: `maxReviewRounds: 2` and `maxGateAttempts: 3`.
 
 ## 4. Confirm with the user
@@ -81,7 +83,7 @@ Use `AskUserQuestion` in `<lang>`, with at most 4 questions per call, and put th
 1. **Browser testing**: "Enable with `<devCommand>` on `<url>`", "Enable with another command/port" (under "Other") or "Disable".
 2. **Test data**: the detected `seedCandidates`, "No seed" or "Another command" (under "Other").
 3. **Test user**: "E2E_USER and E2E_PASSWORD variables", "Created by the seed (no separate login)" or "No login".
-4. **Lighthouse**: "Measure on the production build (`<build>` + `<start>`)" or "Don't measure". Only ask when both `build` and `start` exist.
+4. **Lighthouse**: "Configure the production build (`<build>` + `<start>`)" or "Don't configure". Explain that it only runs when `/ship` gets `--lighthouse`, because a production build is slow. Only ask when both `build` and `start` exist.
 
 Finally, show the proposed **quality commands** and **routing** in code blocks and ask **Confirm** or **Adjust** (described under "Other"). Apply each adjustment and show the result again until the user confirms.
 
@@ -92,6 +94,7 @@ Finally, show the proposed **quality commands** and **routing** in code blocks a
 ```json
 {
   "language": "en",
+  "prMode": "single",
   "branches": { "feature": "dev", "bugfix": "dev", "refactor": "dev", "chore": "dev", "hotfix": "main" },
   "hotfixBackMerge": "dev",
   "branchPrefix": { "feature": "feat/", "bugfix": "fix/", "hotfix": "hotfix/", "refactor": "refactor/", "chore": "chore/" },
@@ -117,3 +120,4 @@ Finally, show the proposed **quality commands** and **routing** in code blocks a
 4. **Don't commit.** Show the final summary and suggest committing `.claude/flow.json` and `.gitignore`.
    - Mention that project-specific checklists can go in `.claude/checklists/<security|ux|ui|code>.md`. By default they extend the plugin's checklists; they replace them when the first line is `<!-- mode: replace -->`.
    - Mention that the language can be changed later by editing `language` in `flow.json`.
+   - Mention that `prMode` can be set to `"stacked"` for one PR per slice, and that `/ship --lite` is the fast path for small changes.

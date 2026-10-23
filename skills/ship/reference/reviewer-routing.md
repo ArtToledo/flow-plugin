@@ -36,3 +36,17 @@ Adapt them to the project layout. In a monorepo, prefix them with `apps/web/` an
 ```
 
 A file can trigger more than one reviewer. Files that match nothing get only the `code-reviewer`.
+
+## Who is actually called
+
+`route.json` says who *may* review. `/ship` narrows it down to keep runs fast:
+
+| Situation | Reviewers called |
+| --------- | ---------------- |
+| Full mode, round 1 | Every reviewer in `route.json.reviewers` |
+| Lite mode, round 1 | `code`, plus `security` when routed. Never `ux`, `ui` or `browser` (unless `--browser`) |
+| Browser | Once per run, on the last slice that touches the web frontend |
+| Round 2+ | Only reviewers with a `blocker` or `major` in the previous round (`browser`: only for a `blocker`) |
+| `--recheck` | Only reviewers that own an open finding (by id prefix) |
+
+Reviewers that are not called again are carried forward with `review.mjs carry`: their previous findings stay, minus those the builder reported as `fixed`, so `consolidated.json` always covers every reviewer of the slice.

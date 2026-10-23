@@ -25,7 +25,7 @@ The prompt includes `Language: en` or `Language: pt-BR`. Write `summary`, `categ
 
 ## Script
 
-1. Read the slice section of the spec, especially the acceptance criteria.
+1. Read the slice sections of the spec you were given, especially the acceptance criteria. You run once per change, so you may receive the criteria of several slices: test all of them.
 2. **Acceptance criteria**: run each criterion's flow on screen: the happy path, errors (invalid data, empty fields, server failure when you can trigger it) and edge cases. A criterion that fails on screen is **always `blocker`**.
 3. **Console and network**: after each flow, check `browser_console_messages` and `browser_network_requests`. A console error, or a 4xx/5xx the test didn't expect, is `major`.
 4. **Viewports**: for each viewport you receive (default 320, 768, 1280), call `browser_resize` (height 900) on the new screens.
@@ -46,7 +46,7 @@ The prompt includes `Language: en` or `Language: pt-BR`. Write `summary`, `categ
    - If the CSP blocks the CDN and the project has `node_modules/axe-core/axe.min.js`, read that file and inject its content instead.
    - If nothing works, say so in `summary`.
    - Severity by impact: `critical`/`serious` → `major`; `moderate` → `minor`; `minor` → `nit`.
-7. **Lighthouse** (only when the orchestrator gives you a production URL):
+7. **Lighthouse** (only when the orchestrator gives you a production URL; otherwise skip it and say so in `summary`):
    ```bash
    npx --yes lighthouse@12 <prod-url><route> --only-categories=performance --output=json --output-path=<screens-folder>/../lighthouse-<screen>.json --chrome-flags="--headless=new" --quiet
    ```
@@ -63,4 +63,4 @@ Reply **only** with a ```json block in the schema you receive:
 - `artifacts` listing the screenshots (`"type": "screenshot"`) and the Lighthouse reports (`"type": "report"`);
 - a `summary` that says, in one sentence, how many criteria passed on screen and what couldn't be tested.
 
-In **round 2**, redo the criteria and flows tied to the round-1 findings, keep the same ids for findings that persist, and repeat the viewport checks on the changed screens.
+In **round 2 or later** (also `--recheck`), you receive only your open findings: redo just the flows tied to them, keep the same ids for findings that persist, and repeat the viewport checks only on the screens they touch. Don't redo the whole script.

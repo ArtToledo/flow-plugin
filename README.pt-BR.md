@@ -2,7 +2,7 @@
 
 [English](README.md) · **Português**
 
-Plugin do Claude Code que leva uma mudança do pedido ao pull request. Ele faz a triagem do pedido, escreve uma spec dividida em fatias e implementa cada fatia com TDD. Depois roda um quality gate e revisa o código com agentes especializados em paralelo. Achados graves voltam ao builder por um número limitado de rodadas, e no fim o plugin abre PRs empilhados com os achados comentados nas linhas certas.
+Plugin do Claude Code que leva uma mudança do pedido ao pull request. Ele faz a triagem do pedido, escreve uma spec dividida em fatias e implementa cada fatia com TDD. Depois roda um quality gate e revisa o código com agentes especializados em paralelo. Achados graves voltam ao builder por um número limitado de rodadas, e no fim o plugin abre um PR com os achados comentados nas linhas certas. Quando um achado é corrigido depois, a thread recebe uma resposta e é resolvida.
 
 Funciona em **inglês ou português (Brasil)**, e você escolhe o idioma por projeto.
 
@@ -17,18 +17,31 @@ Este repositório é, ao mesmo tempo, o plugin e o marketplace que o distribui.
 ```
 /flow:ship "adicionar checkout com PIX"
    │
-   ├─ triagem ........... natureza, modelo do builder, branch base
-   ├─ spec-writer ....... spec fatiada (≈400 linhas de diff por fatia)
-   ├─ gate humano ....... você aprova a spec ou pede ajustes
-   └─ para cada fatia
-        ├─ builder ...... TDD + conventional commits
-        ├─ quality gate . lint, typecheck, testes, build, e2e (do seu projeto)
-        ├─ revisores .... escolhidos pelos arquivos alterados, em paralelo
-        ├─ loop ......... só achados blocker/major, no máximo 2 rodadas
-        └─ pull request . comentários inline; draft se sobrar blocker
+   ├─ triagem ........... natureza, modo lite ou full, modelo do builder, branch base
+   ├─ spec-writer ....... uma fatia, a menos que a mudança seja grande (> ~1000 linhas) ou se divida naturalmente
+   ├─ gate humano ....... você aprova a spec (só no modo full)
+   ├─ para cada fatia, numa branch só
+   │    ├─ builder ...... TDD + conventional commits, rodando só os testes relacionados
+   │    ├─ gate rápido .. lint, typecheck, testes
+   │    ├─ revisores .... escolhidos pelos arquivos alterados, em paralelo; rodadas seguintes só chamam quem precisa
+   │    ├─ loop ......... blocker/major (mais minors pequenos), no máximo 2 rodadas
+   │    └─ publicação ... um PR para a execução, uma review por fatia
+   ├─ navegador ......... uma vez por execução, na última fatia que mexe em frontend web
+   └─ gate completo ..... build e e2e, uma vez, antes de o PR sair de draft
 ```
 
-Uma feature grande vira uma série de PRs médios empilhados, todos apontando para uma branch de integração. Só a integração abre PR para a sua branch base. Um hotfix vai direto para a `main`, e o PR de back-merge é aberto depois.
+Por padrão a mudança inteira vai num **PR só**, com as fatias como grupos de commits e uma review por fatia. Para mudanças muito grandes, `"prMode": "stacked"` (ou `--stacked`) gera um PR por fatia numa branch de integração, mais um PR final para a sua base. Um hotfix vai direto para a `main`, e o PR de back-merge é aberto depois.
+
+### Lite e full
+
+| | Lite | Full |
+| - | ---- | ---- |
+| Spec | Curta, uma fatia, Sonnet, sem etapa de aprovação | Fatiada, Opus, com aprovação |
+| Revisores | `code`, mais `security` quando roteado | Todos os revisores roteados |
+| Navegador | Só com `--browser` | Uma vez por execução |
+| Indicado para | bugfix, hotfix, chore, mudanças pequenas | features, refatorações amplas |
+
+No fim de cada execução, o `/ship` mostra quanto tempo cada etapa levou por fatia, a partir dos tempos gravados no `state.json`.
 
 ## Instalação
 
@@ -50,10 +63,11 @@ Para desenvolvimento local, use `claude --plugin-dir /caminho/para/flow-plugin`.
 | Comando | O que faz |
 | ------- | --------- |
 | `/flow:flow-init` | Pergunta o idioma, mapeia o projeto (branches, comandos de qualidade, stack, servidor de dev) e grava `.claude/flow.json`. Roda uma vez por projeto. |
-| `/flow:ship <pedido>` | Executa o fluxo completo para uma mudança. |
+| `/flow:ship <pedido>` | Executa o fluxo para uma mudança. Flags: `--lite` / `--full` (pulam a pergunta do modo), `--stacked` (um PR por fatia), `--browser` (força a rodada no navegador), `--lighthouse` (mede Core Web Vitals num build de produção). |
 | `/flow:ship --resume <slug>` | Retoma uma execução interrompida. |
-| `/flow:ship --restack <slug>` | Faz rebase das fatias empilhadas depois que uma delas é mergeada. |
-| `/flow:ship --finalize <slug>` | Abre o PR integração → base, ou o back-merge de um hotfix. |
+| `/flow:ship --recheck <slug> [NN]` | Revisa de novo os achados ainda abertos no PR (opcionalmente deixando o builder corrigir antes), responde "corrigido em `<sha>`" e resolve as threads corrigidas. |
+| `/flow:ship --restack <slug>` | Modo stacked: faz rebase das fatias depois que uma delas é mergeada. |
+| `/flow:ship --finalize <slug>` | Abre o PR integração → base (modo stacked), ou o back-merge de um hotfix. |
 
 Os artefatos de execução (spec, achados, estado e screenshots) ficam em `.claude/flow-runs/<slug>/`. O `/flow:flow-init` adiciona essa pasta ao `.gitignore`.
 
@@ -76,19 +90,20 @@ Para trocar de idioma depois, edite `language` no `flow.json`. Uma execução em
 
 | Agente | Modelo | Papel |
 | ------ | ------ | ----- |
-| `flow:spec-writer` | Opus | Spec fatiada com critérios de aceite testáveis |
+| `flow:spec-writer` | Opus (Sonnet no modo lite) | Spec fatiada com critérios de aceite testáveis |
 | `flow:builder` | Opus (ou Fable, escolhido na triagem) | Único que escreve código; TDD e conventional commits |
 | `flow:code-reviewer` | Sonnet | Roda em toda fatia: testes, arquitetura, erros, concorrência, performance |
 | `flow:security-reviewer` | Sonnet | OWASP Top 10:2025 e ASVS 5.0 |
 | `flow:ux-reviewer` | Sonnet | Heurísticas de Nielsen e comportamento WCAG 2.2 AA |
 | `flow:ui-reviewer` | Sonnet | Tokens de design, contraste, responsividade, Core Web Vitals |
-| `flow:browser-tester` | Sonnet | Testa a fatia num navegador real via Playwright MCP: critérios de aceite, console, rede, 3 larguras, teclado, axe-core, Lighthouse |
+| `flow:browser-tester` | Sonnet | Testa a mudança num navegador real via Playwright MCP, uma vez por execução: critérios de aceite, console, rede, 3 larguras, teclado, axe-core, e Lighthouse com `--lighthouse` |
 
 Os revisores não editam código, e cada um devolve JSON no formato de [`skills/ship/reference/review-schema.json`](skills/ship/reference/review-schema.json).
 
-- Só achados `blocker` e `major` voltam ao builder, em no máximo 2 rodadas.
-- Achados `minor` e `nit` viram comentários no PR.
-- Se sobrar blocker depois da última rodada, o PR abre como draft, com os pendentes listados no topo.
+- Uma rodada com `blocker` ou `major` volta ao builder, em no máximo 2 rodadas. Achados `minor` pequenos vão junto na mesma correção; os demais ficam como `deferred`.
+- Nas rodadas seguintes só os revisores que tiveram `blocker` ou `major` são chamados de novo; os outros são carregados por script.
+- O que sobrar vira comentário no PR. Cada thread leva um marcador oculto, e o `--recheck` responde e resolve a thread quando o achado é corrigido.
+- Se sobrar blocker depois da última rodada, o PR fica em draft, com os pendentes listados no topo.
 
 ## Decisões de design
 
@@ -97,6 +112,9 @@ Os revisores não editam código, e cada um devolve JSON no formato de [`skills/
   - roteamento de revisores por glob;
   - validação e deduplicação das reviews;
   - payload dos comentários inline (só em linhas que estão no diff);
+  - revisores carregados de uma rodada para a outra;
+  - localizar, responder e resolver as threads do flow no PR;
+  - tempo de cada etapa;
   - ciclo de vida do servidor de dev;
   - texto dos PRs nos dois idiomas.
 - **O builder mantém o contexto entre rodadas.** Ele é retomado com `SendMessage` em vez de começar do zero, e por isso lembra por que escreveu o que escreveu.
@@ -104,7 +122,7 @@ Os revisores não editam código, e cada um devolve JSON no formato de [`skills/
 
 ## Personalização por projeto
 
-- `.claude/flow.json`: idioma, branch base de cada natureza, prefixos, comandos de qualidade, globs de roteamento, servidor de dev e limites do loop.
+- `.claude/flow.json`: idioma, modo de PR (`"prMode": "single"` ou `"stacked"`), branch base de cada natureza, prefixos, comandos de qualidade, globs de roteamento, servidor de dev e limites do loop.
 - `.claude/checklists/<security|ux|ui|code>.md`: estende o checklist do plugin. Para substituí-lo, comece o arquivo com `<!-- mode: replace -->`.
 
 ## Desenvolvimento

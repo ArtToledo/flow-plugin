@@ -4,7 +4,60 @@ The skill fills in the values between `{{ }}`. Remove sections that don't apply,
 
 Write everything in the run language (`<lang>`). The templates below are in English. For `pt-BR`, use the headings and fixed phrases from the table at the end.
 
-## Slice PR (or a single-slice change)
+## Single PR (the default: one PR for the whole run)
+
+Title: `{{type}}({{scope}}): {{summary}}`.
+
+```markdown
+{{#if blockers remain}}
+> [!WARNING]
+> **Draft: {{n}} blocker finding(s) still open.** See "Pending" below.
+{{/if}}
+
+## Goal
+
+{{goal, from the spec}}
+
+## Slices
+
+{{#each slice}}
+### {{NN}} - {{title}} {{✅ done | ⏳ in progress | ⏸️ pending}}
+
+{{slice goal}}
+
+- [x] {{criterion met}}
+- [ ] {{criterion not met — with the reason}}
+{{/each}}
+
+## How to test
+
+1. {{step}}
+
+Quality gate: `{{lint}}` · `{{typecheck}}` · `{{test}}` · `{{build}}`{{ · e2e}}
+
+## Automated review
+
+| Slice | Reviewers | Rounds | Result |
+| ----- | --------- | ------ | ------ |
+| {{NN}} | {{code, security}} | {{rounds}} | {{blocker}} blocker · {{major}} major · {{minor}} minor · {{nit}} nit |
+
+{{#if browser ran}}Browser: {{one-sentence summary}} (slice {{NN}}).{{/if}}
+
+{{#if pending}}
+## Pending
+
+`blocker`/`major` findings that remain, and findings disputed or deferred by the builder, left for a human decision:
+
+- **{{severity}}** `{{id}}` `{{file}}:{{line}}` — {{evidence}} {{(disputed: reason)}}
+{{/if}}
+
+---
+Spec: `.claude/flow-runs/{{slug}}/spec.md` (local)
+```
+
+A lite run has one slice: drop the "Slices" heading and put its criteria under "Acceptance criteria" instead.
+
+## Slice PR (stacked mode)
 
 Title: `{{type}}({{scope}}): {{NN}} - {{summary}}`. For a single slice, use `{{type}}({{scope}}): {{summary}}`.
 
@@ -53,7 +106,7 @@ Rounds: {{rounds}} of {{maxReviewRounds}}. Final totals: {{blocker}} blocker · 
 Spec: `.claude/flow-runs/{{slug}}/spec.md` (local)
 ```
 
-## Final PR (integration → base)
+## Final PR (stacked mode: integration → base)
 
 Title: `{{type}}({{scope}}): {{feature summary}}`.
 
@@ -101,6 +154,13 @@ Back-merge of hotfix #{{hotfix PR}} (`{{branch}}`), already merged into `{{main}
 | Pending | Pendentes |
 | disputed | contestado |
 | Draft: … blocker finding(s) still open after … review round(s) | Draft: … achado(s) blocker pendente(s) após … rodada(s) de review |
+| Draft: … blocker finding(s) still open | Draft: … achado(s) blocker pendente(s) |
+| done / in progress / pending | pronta / em andamento / pendente |
+| Quality gate | Quality gate |
+| Slice / Reviewers / Rounds / Result | Fatia / Revisores / Rodadas / Resultado |
+| Browser: … (slice …) | Navegador: … (fatia …) |
+| disputed or deferred by the builder | contestados ou adiados pelo builder |
+| deferred | adiado |
 | Slices / Summary / State | Fatias / Resumo / Estado |
 | Feature acceptance criteria | Critérios de aceite da feature |
 | Inherited pending items / None. | Pendentes herdados / Nenhum. |

@@ -17,6 +17,7 @@ The prompt includes `Language: en` or `Language: pt-BR`. Write the whole spec, a
 The orchestrator sends:
 - the request;
 - the language;
+- the mode: `lite` or `full`;
 - the change type (feature, bugfix, hotfix, refactor or chore);
 - the base branch;
 - the output path;
@@ -25,9 +26,13 @@ The orchestrator sends:
 ## How to work
 
 1. Read `CLAUDE.md` and the minimum code needed to find where the change happens: entry points, affected modules, existing tests and architecture patterns (layers, ports and adapters).
-2. Split the change into **vertical slices**, each one testable and shippable on its own, aiming for **up to ~400 lines of diff** per slice. Order them by dependency. **Bugfix and hotfix get exactly one slice.**
+2. **Prefer a single slice.** Every slice costs a full build → review → fix cycle, so split only when it pays off:
+   - the change is larger than **~1000 lines of diff**, or
+   - it has parts that are truly independent and worth reviewing separately (e.g. a backend contract the frontend then consumes).
+   When you split, make **vertical slices**, each one testable on its own, ordered by dependency, and aim for **~600–1000 lines** each. Never split by layer just to keep slices small. **Lite mode, bugfix and hotfix get exactly one slice.**
 3. Don't invent requirements. Put anything ambiguous under "Open questions", with answer options when possible. The slice adopts the most conservative option and marks it as an assumption.
-4. Write the spec to the given path. Reply with a short summary: the number of slices, the title of each one, and the number of open questions.
+4. **Lite mode**: keep it short. Read only what you need to locate the change, and write just the header, the goal, one slice and the open questions (skip "Technical context" when there is nothing non-obvious to say).
+5. Write the spec to the given path. Reply with a short summary: the number of slices, the title of each one, and the number of open questions.
 
 ## Changes
 
