@@ -101,9 +101,11 @@ Para trocar de idioma depois, edite `language` no `flow.json`. Uma execução em
 Os revisores não editam código, e cada um devolve JSON no formato de [`skills/ship/reference/review-schema.json`](skills/ship/reference/review-schema.json).
 
 - Uma rodada com `blocker` ou `major` volta ao builder, em no máximo 2 rodadas. Achados `minor` pequenos vão junto na mesma correção; os demais ficam como `deferred`.
-- Nas rodadas seguintes só os revisores que tiveram `blocker` ou `major` são chamados de novo; os outros são carregados por script.
+- Nas rodadas seguintes só os revisores que tiveram `blocker` ou `major` são chamados de novo, inclusive o navegador; os outros são carregados por script.
+- A palavra do builder não é prova. Um achado que ele diz ter corrigido, e que nenhum revisor reverificou, continua listado como *sem reverificação* até o `--recheck` confirmar.
+- Quando o gate completo (build, e2e) obriga a correções, o `code` (mais o `security`, se roteado) revisa só essas correções. Se o gate passa de primeira, nada extra roda.
 - O que sobrar vira comentário no PR. Cada thread leva um marcador oculto, e o `--recheck` responde e resolve a thread quando o achado é corrigido.
-- Se sobrar blocker depois da última rodada, o PR fica em draft, com os pendentes listados no topo.
+- Se sobrar blocker ou major depois da última rodada, o PR fica em draft, com os pendentes listados no topo. Um blocker também para a execução; um major não.
 
 ## Decisões de design
 

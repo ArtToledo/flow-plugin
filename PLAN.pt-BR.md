@@ -147,7 +147,7 @@ Sete agentes (o sétimo, \`browser-tester\`, está na seção seguinte), cada um
 
 ### Regras de cada um
 
-- `spec-writer`: cada fatia tem objetivo, arquivos prováveis, critérios de aceite testáveis, testes a escrever e dependência entre fatias. Fatia mira em até cerca de 400 linhas de diff. Lista dúvidas em vez de inventar requisito.
+- `spec-writer`: cada fatia tem objetivo, arquivos prováveis, critérios de aceite testáveis, testes a escrever e dependência entre fatias. A mudança é uma fatia só, a menos que passe de cerca de 1000 linhas de diff ou se divida naturalmente; aí cada fatia mira em cerca de 600–1000 linhas (desde a 0.3.0; antes eram 400). Lista dúvidas em vez de inventar requisito.
 - `builder`: escreve o teste que falha primeiro, depois o código. Segue Clean/Hexagonal quando o projeto já usa. Não altera arquivos fora do escopo da fatia sem justificar. Ao ser retomado, trata cada achado e responde `corrigido` ou `contestado + motivo`.
 - Revisores: só leem. Avaliam apenas o diff da fatia e o contexto necessário, nunca o repositório inteiro. Todo achado aponta arquivo, linha, evidência e correção sugerida. Sem achado concreto, devolvem lista vazia.
 - `code-reviewer` roda sempre; os outros três dependem do roteamento.
@@ -226,7 +226,7 @@ Todo revisor devolve exatamente este JSON; a skill rejeita e pede de novo, uma v
 
 - Rodada 2 só reavalia os achados da rodada 1 e o diff novo, para não surgir uma leva inteira de achados novos.
 - Achado que o builder contestou com motivo vai para o PR como pendente, para você decidir.
-- Depois da 2ª rodada com `blocker` restante, o PR abre como draft e a descrição lista os pendentes no topo.
+- Depois da 2ª rodada com `blocker` ou `major` restante, o PR abre como draft e a descrição lista os pendentes no topo.
 
 ## Branches, PRs e comentários
 

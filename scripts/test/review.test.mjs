@@ -97,15 +97,52 @@ test('parses the builder reply per id', () => {
   assert.equal(r.get('UX-003').status, 'deferred');
 });
 
-test('carries a reviewer forward without the findings the builder fixed', () => {
+test('carrying a reviewer forward keeps the findings the builder reports as fixed, marked unverified', () => {
   const review = { reviewer: 'browser', round: 1, summary: 's', findings: [finding({ id: 'BRW-001' }), finding({ id: 'BRW-002' }), finding({ id: 'BRW-003' })] };
   const responses = parseBuilderResponse('BRW-001: fixed — abc\nBRW-002: disputed — expected');
   const carried = carryForward(review, responses, 2);
   assert.equal(carried.round, 2);
-  assert.deepEqual(carried.findings.map(f => f.id), ['BRW-002', 'BRW-003']);
-  assert.equal(carried.findings[0].contested, true);
-  assert.equal(carried.findings[0].builderNote, 'expected');
+  assert.deepEqual(carried.findings.map(f => f.id), ['BRW-001', 'BRW-002', 'BRW-003']);
+  assert.equal(carried.findings[0].unverified, true);
+  assert.equal(carried.findings[0].builderNote, 'abc');
+  assert.equal(carried.findings[1].contested, true);
+  assert.equal(carried.findings[1].builderNote, 'expected');
+  assert.equal(carried.findings[2].unverified, undefined);
   assert.deepEqual(validateReview(carried), []);
+});
+
+test('a finding claimed fixed still counts, and its thread is not resolved', () => {
+  const carried = carryForward(
+    { reviewer: 'code', round: 1, summary: 's', findings: [finding({ id: 'CODE-002', severity: 'minor' })] },
+    parseBuilderResponse('CODE-002: fixed — abc'),
+    2,
+  );
+  const result = consolidate([carried]);
+  assert.equal(result.counts.minor, 1);
+  assert.equal(result.counts.unverified, 1);
+  assert.deepEqual(threadsToResolve(flowThreads(graphql), result, '01').map(t => t.threadId), ['T1']);
+});
+
+test('a finding claimed fixed by one reviewer but still reported by another stays open', () => {
+  const result = consolidate([
+    { reviewer: 'code', round: 2, summary: 's', findings: [finding({ id: 'CODE-001', unverified: true })] },
+    { reviewer: 'security', round: 2, summary: 's', findings: [finding({ id: 'SEC-001' })] },
+  ]);
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0].unverified, false);
+  assert.equal(result.counts.unverified, 0);
+});
+
+test('payload lists unverified findings in the body, without opening a thread', () => {
+  const result = consolidate([{ reviewer: 'code', round: 2, summary: 's', findings: [
+    finding({ id: 'A', severity: 'minor', unverified: true, builderNote: 'abc1234' }),
+  ] }]);
+  const payload = buildReviewPayload(result, diff, { slice: '01' });
+  assert.equal(payload.comments.length, 0);
+  assert.match(payload.body, /Reported fixed by the builder, not re-checked yet/);
+  assert.match(payload.body, /`A` `src\/a.ts:10`.*\(abc1234\)/);
+  assert.match(reviewerSummary(result, 'code'), /reported fixed, not re-checked/);
+  assert.match(buildReviewPayload(result, diff, { lang: 'pt-BR' }).body, /Corrigidos segundo o builder/);
 });
 
 const graphql = { data: { repository: { pullRequest: { reviewThreads: { nodes: [

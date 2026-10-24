@@ -9,9 +9,9 @@ Write everything in the run language (`<lang>`). The templates below are in Engl
 Title: `{{type}}({{scope}}): {{summary}}`.
 
 ```markdown
-{{#if blockers remain}}
+{{#if blockers or majors remain}}
 > [!WARNING]
-> **Draft: {{n}} blocker finding(s) still open.** See "Pending" below.
+> **Draft: {{n}} blocker/major finding(s) still open.** See "Pending" below.
 {{/if}}
 
 ## Goal
@@ -46,9 +46,9 @@ Quality gate: `{{lint}}` · `{{typecheck}}` · `{{test}}` · `{{build}}`{{ · e2
 {{#if pending}}
 ## Pending
 
-`blocker`/`major` findings that remain, and findings disputed or deferred by the builder, left for a human decision:
+`blocker`/`major` findings that remain, findings disputed or deferred by the builder, and findings the builder reported as fixed that no reviewer re-checked yet, left for a human decision:
 
-- **{{severity}}** `{{id}}` `{{file}}:{{line}}` — {{evidence}} {{(disputed: reason)}}
+- **{{severity}}** `{{id}}` `{{file}}:{{line}}` — {{evidence}} {{(disputed: reason) | (reported fixed in sha, not re-checked)}}
 {{/if}}
 
 ---
@@ -62,9 +62,9 @@ A lite run has one slice: drop the "Slices" heading and put its criteria under "
 Title: `{{type}}({{scope}}): {{NN}} - {{summary}}`. For a single slice, use `{{type}}({{scope}}): {{summary}}`.
 
 ```markdown
-{{#if blockers remain}}
+{{#if blockers or majors remain}}
 > [!WARNING]
-> **Draft: {{n}} blocker finding(s) still open after {{rounds}} review round(s).** See "Pending" below.
+> **Draft: {{n}} blocker/major finding(s) still open after {{rounds}} review round(s).** See "Pending" below.
 {{/if}}
 
 ## Goal
@@ -97,9 +97,9 @@ Rounds: {{rounds}} of {{maxReviewRounds}}. Final totals: {{blocker}} blocker · 
 {{#if pending}}
 ## Pending
 
-`blocker`/`major` findings that remain, and findings disputed by the builder, left for a human decision:
+`blocker`/`major` findings that remain, findings disputed by the builder, and findings the builder reported as fixed that no reviewer re-checked yet, left for a human decision:
 
-- **{{severity}}** `{{id}}` `{{file}}:{{line}}` — {{evidence}} {{(disputed: reason)}}
+- **{{severity}}** `{{id}}` `{{file}}:{{line}}` — {{evidence}} {{(disputed: reason) | (reported fixed in sha, not re-checked)}}
 {{/if}}
 
 ---
@@ -153,8 +153,9 @@ Back-merge of hotfix #{{hotfix PR}} (`{{branch}}`), already merged into `{{main}
 | Rounds … of … Final totals | Rodadas … de … Totais finais |
 | Pending | Pendentes |
 | disputed | contestado |
-| Draft: … blocker finding(s) still open after … review round(s) | Draft: … achado(s) blocker pendente(s) após … rodada(s) de review |
-| Draft: … blocker finding(s) still open | Draft: … achado(s) blocker pendente(s) |
+| Draft: … blocker/major finding(s) still open after … review round(s) | Draft: … achado(s) blocker/major pendente(s) após … rodada(s) de review |
+| Draft: … blocker/major finding(s) still open | Draft: … achado(s) blocker/major pendente(s) |
+| reported fixed in …, not re-checked | corrigido em … segundo o builder, sem reverificação |
 | done / in progress / pending | pronta / em andamento / pendente |
 | Quality gate | Quality gate |
 | Slice / Reviewers / Rounds / Result | Fatia / Revisores / Rodadas / Resultado |

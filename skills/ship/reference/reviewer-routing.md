@@ -46,7 +46,8 @@ A file can trigger more than one reviewer. Files that match nothing get only the
 | Full mode, round 1 | Every reviewer in `route.json.reviewers` |
 | Lite mode, round 1 | `code`, plus `security` when routed. Never `ux`, `ui` or `browser` (unless `--browser`) |
 | Browser | Once per run, on the last slice that touches the web frontend |
-| Round 2+ | Only reviewers with a `blocker` or `major` in the previous round (`browser`: only for a `blocker`) |
+| Round 2+ | Only reviewers with a `blocker` or `major` in the previous round (the `browser` redoes only the flows tied to its findings) |
+| After full-gate fixes | `code`, plus `security` when the fixes route to it, on the fixes' diff only. Skipped when the full gate passes the first time |
 | `--recheck` | Only reviewers that own an open finding (by id prefix) |
 
-Reviewers that are not called again are carried forward with `review.mjs carry`: their previous findings stay, minus those the builder reported as `fixed`, so `consolidated.json` always covers every reviewer of the slice.
+Reviewers that are not called again are carried forward with `review.mjs carry`, so `consolidated.json` always covers every reviewer of the slice. Their previous findings stay; the ones the builder reported as `fixed` are marked **unverified** instead of dropped, because only a reviewer can confirm a fix. They are listed in the review body and in `pending`, and `--recheck` confirms them.

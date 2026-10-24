@@ -1,6 +1,6 @@
 # Browser round
 
-This round runs **once per run**: on the last slice whose spec says "Touches web frontend: yes", when `state.browser` is `true` (full mode with `flow.json.browser` configured, or `--browser`). In round 2 or later it runs again only if it found a `blocker`; otherwise its findings are carried forward (`review.mjs carry`). Lite runs skip it unless `--browser` was passed.
+This round runs **once per run**: on the last slice whose spec says "Touches web frontend: yes", when `state.browser` is `true` (full mode with `flow.json.browser` configured, or `--browser`). In round 2 or later it runs again when it found a `blocker` or `major`, redoing only the flows tied to those findings; otherwise its findings are carried forward (`review.mjs carry`). Lite runs skip it unless `--browser` was passed.
 
 The `browser-tester` uses the Playwright MCP server declared in the plugin's `.mcp.json`. Projects don't need any extra setup.
 

@@ -49,6 +49,7 @@ export function validateReview(review) {
     if (f.checklistRef !== undefined && typeof f.checklistRef !== 'string') errors.push(`${at}.checklistRef must be a string.`);
     if (f.contested !== undefined && typeof f.contested !== 'boolean') errors.push(`${at}.contested must be a boolean.`);
     if (f.builderNote !== undefined && typeof f.builderNote !== 'string') errors.push(`${at}.builderNote must be a string.`);
+    if (f.unverified !== undefined && typeof f.unverified !== 'boolean') errors.push(`${at}.unverified must be a boolean.`);
     if (ids.has(f.id)) errors.push(`${at}.id is duplicated: ${f.id}.`);
     ids.add(f.id);
   });
@@ -82,7 +83,7 @@ export function consolidate(reviews) {
   const merged = [];
   for (const review of reviews) {
     for (const finding of review.findings) {
-      const item = { ...finding, reviewers: [review.reviewer], ids: [finding.id] };
+      const item = { ...finding, reviewers: [review.reviewer], ids: [finding.id], unverified: Boolean(finding.unverified) };
       const dup = merged.find(m => isDuplicate(m, item));
       if (!dup) {
         merged.push(item);
@@ -94,10 +95,13 @@ export function consolidate(reviews) {
       dup.reviewers = [...new Set([...dup.reviewers, review.reviewer])];
       dup.ids.push(item.id);
       dup.contested = Boolean(dup.contested || item.contested);
+      // Still reported by some reviewer, so it is open, not just claimed fixed.
+      dup.unverified = dup.unverified && item.unverified;
     }
   }
   merged.sort((a, b) => RANK[a.severity] - RANK[b.severity] || a.file.localeCompare(b.file) || (a.line ?? 0) - (b.line ?? 0));
   const counts = Object.fromEntries(SEVERITIES.map(s => [s, merged.filter(f => f.severity === s).length]));
+  counts.unverified = merged.filter(f => f.unverified).length;
   return {
     round: Math.max(...reviews.map(r => r.round), 1),
     reviewers: reviews.map(r => ({ reviewer: r.reviewer, summary: r.summary, artifacts: r.artifacts ?? [] })),
@@ -155,16 +159,21 @@ function findingBody(f, t, slice) {
 // COMMENT: the author cannot request changes on their own PR. Nits and findings
 // outside the diff go grouped into the review body, together with one summary
 // line per reviewer. Findings in skipIds already have an open thread and are
-// not posted again.
+// not posted again. Findings the builder reported as fixed but no reviewer
+// re-checked don't open a thread either: they are listed in the body, so they
+// stay visible until --recheck confirms them.
 export function buildReviewPayload(consolidated, diffText, { commitId, lang = 'en', slice, skipIds = new Set() } = {}) {
   const t = messages(lang);
   const lines = commentableLines(diffText);
   const comments = [];
   const general = [];
   const nits = [];
+  const unverified = [];
   for (const f of consolidated.findings) {
     if (f.ids.some(id => skipIds.has(id))) continue;
-    if (f.severity === 'nit') {
+    if (f.unverified) {
+      unverified.push(f);
+    } else if (f.severity === 'nit') {
       nits.push(f);
     } else if (f.line !== null && lines.get(f.file)?.has(f.line)) {
       comments.push({ path: f.file, line: f.line, side: 'RIGHT', body: findingBody(f, t, slice) });
@@ -181,6 +190,10 @@ export function buildReviewPayload(consolidated, diffText, { commitId, lang = 'e
   if (general.length) {
     body.push('', t.outsideDiff, '');
     for (const f of general) body.push(`- \`${f.file}${f.line ? `:${f.line}` : ''}\` — ${findingBody(f, t).replace(/\n+/g, ' ')}`);
+  }
+  if (unverified.length) {
+    body.push('', t.unverifiedHeader, '');
+    for (const f of unverified) body.push(`- **${f.severity}** \`${f.ids.join(', ')}\` \`${f.file}${f.line ? `:${f.line}` : ''}\` — ${f.evidence}${f.builderNote ? ` (${f.builderNote})` : ''}`);
   }
   if (nits.length) {
     body.push('', `<details><summary>${t.nits(nits.length)}</summary>`, '');
@@ -204,7 +217,7 @@ export function reviewerSummary(consolidated, reviewer, { lang = 'en' } = {}) {
   } else {
     lines.push(t.tableHeader, '| --- | --- | --- | --- |');
     for (const f of own) {
-      lines.push(`| ${LABEL[f.severity]}${f.contested ? t.disputed : ''} | ${f.ids.join(', ')} | \`${f.file}${f.line ? `:${f.line}` : ''}\` | ${f.category} |`);
+      lines.push(`| ${LABEL[f.severity]}${f.contested ? t.disputed : ''}${f.unverified ? t.claimedFixed : ''} | ${f.ids.join(', ')} | \`${f.file}${f.line ? `:${f.line}` : ''}\` | ${f.category} |`);
     }
   }
   const screens = meta.artifacts.filter(a => a.type === 'screenshot');
@@ -224,15 +237,16 @@ export function parseBuilderResponse(text) {
 }
 
 // A reviewer that is not called again in the next round keeps its previous
-// review: the findings the builder fixed are dropped, the disputed ones are
-// marked as contested, and everything else is carried as is.
+// review. The builder's word is not proof: a finding it reports as fixed stays,
+// marked unverified, until a reviewer re-checks it (--recheck). Disputed ones
+// are marked as contested, and everything else is carried as is.
 export function carryForward(review, responses, round) {
-  const findings = [];
-  for (const f of review.findings) {
+  const findings = review.findings.map(f => {
     const r = responses.get(f.id);
-    if (r?.status === 'fixed') continue;
-    findings.push(r?.status === 'disputed' ? { ...f, contested: true, builderNote: r.note } : f);
-  }
+    if (r?.status === 'fixed') return { ...f, unverified: true, builderNote: r.note };
+    if (r?.status === 'disputed') return { ...f, contested: true, builderNote: r.note };
+    return f;
+  });
   return { ...review, round, findings };
 }
 

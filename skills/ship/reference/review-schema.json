@@ -24,7 +24,8 @@
           "fix": { "type": "string", "description": "Suggested fix." },
           "checklistRef": { "type": "string", "description": "<checklist>.md#<item ID>, e.g. security.md#A01." },
           "contested": { "type": "boolean", "description": "Round 2: true when the builder disputed the finding and the reviewer keeps it." },
-          "builderNote": { "type": "string", "description": "Round 2: the reason the builder gave when disputing." }
+          "builderNote": { "type": "string", "description": "Round 2: the reason the builder gave when disputing, or the commit it gave when reporting a fix." },
+          "unverified": { "type": "boolean", "description": "Set by review.mjs carry, never by a reviewer: the builder reported it fixed and no reviewer has re-checked it yet." }
         }
       }
     },

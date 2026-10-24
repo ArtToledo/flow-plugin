@@ -12,7 +12,7 @@ gh pr view <branch> --json number,url,isDraft
 
 Write the body to a file inside the run folder and pass it with `--body-file`. Never pass long Markdown inline.
 
-- **Single mode**: after slice 01, create the PR with `--draft`, targeting the base, with the "Single PR" template. After each later slice, push and refresh the body with `gh pr edit <n> --body-file <file>`. After the last slice, run `gh pr ready <n>` unless a blocker is left.
+- **Single mode**: after slice 01, create the PR with `--draft`, targeting the base, with the "Single PR" template. After each later slice, push and refresh the body with `gh pr edit <n> --body-file <file>`. After the last slice, run `gh pr ready <n>` unless a blocker or major is left.
 - **Stacked mode**: one PR per slice, targeting the integration branch (or the base for a single slice), with the "Slice PR" template.
 
 ## Review comments
@@ -50,8 +50,8 @@ node "<plugin>/scripts/review.mjs" payload <round>/consolidated.json --diff <sli
 
 ## Draft
 
-- A PR that still has a blocker after the last round stays a draft (single mode) or is created with `--draft` (stacked mode).
-- Once the blockers are resolved (`--resume` or `--recheck`), mark it ready with `gh pr ready <n>`.
+- A PR that still has a blocker or major after the last round stays a draft (single mode) or is created with `--draft` (stacked mode). A blocker also stops the run; a major doesn't.
+- Once they are resolved (`--resume` or `--recheck`), mark it ready with `gh pr ready <n>`. A person can also decide to accept a major and mark the PR ready by hand.
 
 ## Restack (stacked mode only)
 

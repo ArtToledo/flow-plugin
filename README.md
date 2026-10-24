@@ -101,9 +101,11 @@ To switch languages later, edit `language` in `flow.json`. A run already in prog
 The reviewers can't edit code. Each one returns JSON in the format defined in [`skills/ship/reference/review-schema.json`](skills/ship/reference/review-schema.json).
 
 - A round with a `blocker` or `major` goes back to the builder, for at most 2 rounds. Small `minor` findings ride along in the same fix; the rest are `deferred`.
-- In later rounds only the reviewers that had a `blocker` or `major` are called again; the others are carried forward by script.
+- In later rounds only the reviewers that had a `blocker` or `major` are called again, the browser included; the others are carried forward by script.
+- The builder's word is not proof. A finding it reports as fixed that no reviewer re-checked stays listed as *not re-checked* until `--recheck` confirms it.
+- When the full gate (build, e2e) forces fixes, `code` (plus `security` when routed) reviews just those fixes. When it passes the first time, nothing extra runs.
 - What is left becomes PR comments. Each thread carries a hidden marker, so `--recheck` can reply to it and resolve it once the finding is fixed.
-- If a blocker is still open after the last round, the PR stays a draft, with the open findings listed at the top.
+- If a blocker or major is still open after the last round, the PR stays a draft, with the open findings listed at the top. A blocker also stops the run; a major doesn't.
 
 ## Design choices
 

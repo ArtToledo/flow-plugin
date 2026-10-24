@@ -24,7 +24,8 @@ Arguments received: `$ARGUMENTS`
 ## Speed rules
 
 The flow is slow when it repeats work. Keep to these rules throughout:
-- **Two gate levels.** The *fast gate* (`lint`, `typecheck`, `test`) runs after each build and fix. The *full gate* (`build`, `e2e`) runs **once per PR stage**, after the last review round (5.7). The builder runs only the tests related to what it changed.
+- **Two gate levels.** The *fast gate* (`lint`, `typecheck`, `test`) runs after each build and fix. The *full gate* (`build`, `e2e`) runs **once per PR stage**, after the last review round (5.7). Fixes it forces get a short review of their own.
+- **The builder's word is not proof.** A finding leaves the PR only when a reviewer re-checks it. A finding the builder reports as `fixed` that no reviewer re-checked stays as *unverified* (5.4). The builder runs only the tests related to what it changed.
 - **Later rounds call only the reviewers that need to re-check something** (5.4). The others are carried forward by script.
 - **The browser round runs once per run** (5.4), not on every slice or round.
 - **Prefer one slice and one PR.** Slicing and stacked PRs are for changes that really need them.
@@ -182,12 +183,12 @@ Pick the reviewers for **round 1** (details in `reference/reviewer-routing.md`):
 Set `step: "review"` and run `timings.mjs start … review --slice N --round R`. If the browser runs in this round, prepare the server following steps 1–4 of `reference/browser.md`.
 
 **Round R ≥ 2: call only the reviewers that need to re-check something.**
-- Call a reviewer again when its findings in round R−1 included a `blocker` or `major`. The `browser-tester` is called again **only for a `blocker`**.
+- Call a reviewer again when its findings in round R−1 included a `blocker` or `major`. This includes the `browser-tester`: it redoes only the flows tied to its open findings, so the second pass is short.
 - Every other reviewer that ran in round R−1 is carried forward, without an agent call:
   ```bash
   node "${CLAUDE_PLUGIN_ROOT}/scripts/review.mjs" carry round-<R-1>/<reviewer>.json --response round-<R-1>/builder-response.md --round <R> --out round-<R>/<reviewer>.json
   ```
-  This drops the findings the builder reported as `fixed` and marks the `disputed` ones as contested.
+  This marks the `disputed` findings as contested and the ones the builder reported as `fixed` as **unverified**: they are not dropped. Since only reviewers without a `blocker` or `major` are carried, these are `minor` and `nit` findings. They don't open PR threads; they are listed in the review body and in `pending`, and `--recheck` confirms them.
 
 Then, **in a single message**, make one `Agent` call per selected reviewer:
 
@@ -244,7 +245,7 @@ This writes `consolidated.json` and reports `needsFix` (there is a blocker or ma
   3. Ask it to reply per id with `fixed`, `disputed: <reason>` or `deferred: <reason>`. Fixes go in `fix(review): …` commits. It runs only the related tests, not the whole gate.
   4. Save the reply to `round-<R>/builder-response.md`.
   5. Go back to **5.2** (fast gate) with `R = R + 1`.
-- **Otherwise**: continue to 5.7. If the last round still has a blocker, the slice ships as a **draft**.
+- **Otherwise**: continue to 5.7. If the last round still has a `blocker` or a `major`, the PR stays a **draft** (5.8).
 
 A round without a `blocker` or `major` never goes back to the builder: its `minor` and `nit` findings become PR comments.
 
@@ -254,7 +255,13 @@ Run it **once**, before publishing:
 - **Single mode**: after the **last** slice only (earlier slices skip it).
 - **Stacked mode**: on every slice, since each one is its own PR.
 
-Set `step: "full-gate"` and run `timings.mjs start … full-gate --slice N`. Run `build`, then `e2e`, if they exist in `flow.json.commands`. On failure, handle it like 5.2 (same builder, same attempt limit), then run the fast gate once more. Don't start another review round for these fixes.
+Set `step: "full-gate"` and run `timings.mjs start … full-gate --slice N`. Run `build`, then `e2e`, if they exist in `flow.json.commands`. On failure, handle it like 5.2 (same builder, same attempt limit), then run the fast gate once more.
+
+**Review the gate fixes**, only when the full gate needed fixes (when it passes the first time, skip this):
+1. Open round `R + 1`, where R is the slice's last round. Save `git diff <roundHeads[R]>..HEAD` as `diff-incremental.patch` and run `route.mjs --base <roundHeads[R]>`.
+2. In a single message, call `code`, plus `security` when that route lists it. Never `ux`, `ui` or `browser`: e2e already exercised the screens. Each one gets its round R findings, the incremental diff and the instruction to keep re-evaluating its open findings and review **only** the fixes (as in round R ≥ 2 of 5.4).
+3. Carry every other reviewer of round R with `review.mjs carry`, without `--response`. Validate and consolidate as in 5.5, and set `roundHeads[R + 1] = HEAD`.
+4. There is no fix loop here: what it finds is published like any other finding, and a `blocker` or `major` keeps the PR a draft.
 
 ### 5.8 Publish
 
@@ -264,18 +271,19 @@ Set `step: "publish"` and run `timings.mjs start … publish --slice N`. Follow 
 1. `git push -u origin <branch>`.
 2. After slice 01, create the PR **as a draft** targeting the base, with the "Single PR" template (slices that are not done yet are listed as pending). Save `pr` in the state. After later slices, update the body with `gh pr edit <n> --body-file`.
 3. Post **one review** for this slice with `review.mjs payload … --slice NN` (findings only, inline where possible; the reviewer summaries go in the review body). Skip it if the slice ended with no findings.
-4. After the **last** slice: run `gh pr ready <n>` unless some slice still has a blocker.
+4. After the **last** slice: run `gh pr ready <n>` unless some slice still has a `blocker` or `major` (`needsFix` in its last `consolidated.json`).
 
 **Stacked mode** (one PR per slice):
 1. `git push -u origin <branch>`.
-2. `gh pr create` targeting the integration branch (or the base for a single slice), with the "Slice PR" template, conventional title and `--draft` if `hasBlocker`. Save `pr` in the state.
+2. `gh pr create` targeting the integration branch (or the base for a single slice), with the "Slice PR" template, conventional title and `--draft` if `needsFix` (a `blocker` or `major` is left). Save `pr` in the state.
 3. Post **one review** with `review.mjs payload … --slice NN`.
 
-Then set `status: "pr-open"` (or `"draft"`), `step: "done"`, `reviewedSha` (HEAD) and `pending` (the ids left over: blockers, majors, disputed and deferred findings).
+Then set `status: "pr-open"` (or `"draft"` when a blocker is left), `pr.draft`, `step: "done"`, `reviewedSha` (HEAD) and `pending` (the ids left over: blockers, majors, disputed, deferred and unverified findings).
 
 ### 5.9 Next slice
 
 - If the slice ended with a **blocker**: **stop the flow** and build nothing on top of it (in single mode the PR stays a draft). Show the pending findings and explain how to continue: the user resolves them and runs `/flow:ship --resume <slug>`.
+- If it ended with a **major**: keep going (a major doesn't stop the run), but the PR stays a draft until the major is resolved or a person decides to accept it. Say so in the end-of-run summary.
 - Otherwise, move to the next slice. Stacked mode: its `parent` is this slice's branch. Single mode: it continues on the same branch.
 
 ## 6. End of the run
@@ -339,7 +347,7 @@ For each slice:
    ```
    It replies "fixed in `<sha>`" on each thread whose findings are gone and resolves it.
 7. Build the payload with `--skip-open slice-NN/recheck-threads.json`. Post it only when it reports at least one new finding.
-8. If the PR is a draft and no blocker is left anywhere in the run, run `gh pr ready <n>`. Update `pending`, `reviewedSha` and `round`.
+8. If the PR is a draft and no `blocker` or `major` is left anywhere in the run, run `gh pr ready <n>`. Update `pending`, `reviewedSha` and `round`.
 
 Show how many threads were resolved and what is still open, then run `timings.mjs end`.
 

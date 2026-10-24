@@ -1,6 +1,6 @@
 {
   "name": "flow",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Spec → builder → review → PR flow with specialized subagents, in English or Brazilian Portuguese",
   "author": {
     "name": "Arthur Toledo"

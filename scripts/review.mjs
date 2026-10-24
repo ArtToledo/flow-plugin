@@ -40,7 +40,7 @@ try {
       writeFileSync(join(target, 'consolidated.json'), `${JSON.stringify(result, null, 2)}\n`);
       const { counts } = result;
       process.stdout.write(
-        `${counts.blocker} blocker, ${counts.major} major, ${counts.minor} minor, ${counts.nit} nit — needsFix=${result.needsFix} hasBlocker=${result.hasBlocker}\n`,
+        `${counts.blocker} blocker, ${counts.major} major, ${counts.minor} minor, ${counts.nit} nit (${counts.unverified} unverified) — needsFix=${result.needsFix} hasBlocker=${result.hasBlocker}\n`,
       );
       break;
     }

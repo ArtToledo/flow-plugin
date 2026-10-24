@@ -166,7 +166,7 @@ There are seven agents (the seventh, `browser-tester`, is described in the next 
 
 - **`spec-writer`**:
   - Every slice has a goal, likely files, testable acceptance criteria, the tests to write, and its dependencies on other slices.
-  - A slice targets up to about 400 lines of diff.
+  - The change is one slice unless it is larger than about 1000 lines of diff or splits naturally; then each slice targets about 600–1000 lines (since 0.3.0; it was 400 before).
   - It lists open questions instead of inventing requirements.
 - **`builder`**:
   - It writes the failing test first, then the code.
@@ -254,7 +254,7 @@ Every reviewer returns exactly this JSON. If the output doesn't match the format
 
 - Round 2 only re-evaluates round 1's findings and the new diff, so that a whole new batch of findings doesn't appear.
 - A finding the builder disputed with a reason goes to the PR as pending, for you to decide.
-- After the 2nd round, if a `blocker` remains, the PR opens as a draft and the description lists the pending findings at the top.
+- After the 2nd round, if a `blocker` or `major` remains, the PR opens as a draft and the description lists the pending findings at the top.
 
 ## Branches, PRs and comments
 

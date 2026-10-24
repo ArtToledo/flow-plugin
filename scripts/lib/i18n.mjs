@@ -15,6 +15,8 @@ const MESSAGES = {
     noFindings: 'No findings.',
     tableHeader: '| Severity | Id | Location | Category |',
     disputed: ' (disputed)',
+    claimedFixed: ' (reported fixed, not re-checked)',
+    unverifiedHeader: '### Reported fixed by the builder, not re-checked yet',
     screenshots: list => `Screenshots (local, in \`.claude/flow-runs/\`): ${list}`,
   },
   'pt-BR': {
@@ -30,6 +32,8 @@ const MESSAGES = {
     noFindings: 'Nenhum achado.',
     tableHeader: '| Severidade | Id | Local | Categoria |',
     disputed: ' (contestado)',
+    claimedFixed: ' (corrigido segundo o builder, sem reverificação)',
+    unverifiedHeader: '### Corrigidos segundo o builder, ainda sem reverificação',
     screenshots: list => `Screenshots (locais, em \`.claude/flow-runs/\`): ${list}`,
   },
 };
