@@ -11,7 +11,7 @@ This repository is both the plugin and the marketplace that distributes it.
 ## How it works
 
 <p align="center">
-  <img src="docs/images/flow-pt-BR.png" alt="Flow diagram (in Portuguese): /flow-init, /ship triage, spec writer, human gate, TDD builder, quality gate, parallel reviewers, fix loop and PRs" width="640">
+  <img src="docs/images/flow-en.png" alt="Flow diagram: /flow-init, /ship triage, spec writer, human gate, TDD builder, fast gate, parallel reviewers and browser, fix loop, slice review, full gate and a single PR" width="640">
 </p>
 
 ```
